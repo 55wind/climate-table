@@ -142,6 +142,18 @@ class ClimateModel:
         out.sort(key=lambda d: abs(d["r"]), reverse=True)
         return out
 
+    def reliability(self, crop):
+        """모델 설명력(R²)을 교육용 신뢰도 등급으로 변환"""
+        r = self.r2.get(crop, 0)
+        if r >= 0.7:
+            return {"level": "high", "label": "높음", "r2": round(r, 2),
+                    "reason": "가격 변동의 대부분을 기상으로 설명할 수 있습니다."}
+        if r >= 0.4:
+            return {"level": "mid", "label": "보통", "r2": round(r, 2),
+                    "reason": "기상 영향이 뚜렷하지만 수급·유통 등 다른 요인도 함께 작용합니다."}
+        return {"level": "low", "label": "낮음", "r2": round(r, 2),
+                "reason": "정부 비축·수급관리 등 비(非)기상 요인이 가격을 크게 좌우합니다."}
+
     def series(self, crop):
         return [{"date": r["date"], "price": r["prices"][crop],
                  "heat_days": r["heat_days"], "heavy_rain_days": r["heavy_rain_days"],

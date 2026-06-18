@@ -146,8 +146,8 @@ function renderResult(res) {
   $("headline").textContent = res.explain.headline;
   $("drivers").textContent = res.explain.drivers;
   $("note").textContent = res.explain.note;
-  $("r2box").innerHTML = `이 작물의 모델 설명력 <b>R² = ${res.r2}</b> · 값이 높을수록 가격이 기상으로 잘 설명됩니다` +
-    (res.r2 < 0.3 ? " (낮음: 정책·수급 영향이 큼)" : "");
+  const rel = res.reliability || { label: "-", reason: "" };
+  $("r2box").innerHTML = `기상 설명력 <b>R² = ${res.r2}</b> · 신뢰도 <b>${rel.label}</b><br><span style="color:#6b7888">${rel.reason}</span>`;
   const ul = $("adapt"); ul.innerHTML = "";
   for (const a of res.adapt) { const li = document.createElement("li"); li.textContent = a; ul.appendChild(li); }
 }

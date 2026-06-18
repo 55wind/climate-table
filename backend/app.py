@@ -122,6 +122,7 @@ class Handler(BaseHTTPRequestHandler):
                 if crop not in MODEL.items:
                     return self._err("unknown item")
                 return self._json({"item": crop, "r2": round(MODEL.r2[crop], 3),
+                                   "reliability": MODEL.reliability(crop),
                                    "coefs": MODEL.coefs[crop]})
             if p == "/api/correlate":
                 crop = q.get("item", [""])[0]
@@ -155,6 +156,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({
                 "item": crop, "predicted": pred, "normal": normal,
                 "r2": round(MODEL.r2[crop], 3),
+                "reliability": MODEL.reliability(crop),
                 "contributions": contribs,
                 "explain": explain(crop, pred, normal, contribs),
                 "adapt": ADAPT.get(crop, []),
