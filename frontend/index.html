@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>기후 식탁 — 날씨가 바꾸는 우리 밥상</title>
+<meta name="description" content="이상기후가 농산물 가격(기후플레이션)에 미치는 영향을 직접 조작하며 학습하는 인터랙티브 도구. 기상청·KAMIS 데이터 기반 회귀모델." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🍽️</span>
+    <div>
+      <h1>기후 식탁</h1>
+      <p>날씨가 바꾸는 우리 밥상 · <b>기후플레이션</b> 학습 시뮬레이터</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="health" class="health">● 연결 확인 중</span>
+    <button id="quizBtn" class="btn-quiz">🎓 학습 퀴즈</button>
+  </div>
+</header>
+
+<section class="hero">
+  <p>“배추 한 포기 2만원, 금사과 한 알 5천원.” 이상기후는 더 이상 먼 이야기가 아니라 <b>밥상 물가</b>입니다.
+  폭염·가뭄·호우·냉해 시나리오를 직접 조절해, 기후가 농산물 가격을 어떻게 움직이는지 데이터로 확인하세요.</p>
+</section>
+
+<main class="grid">
+  <!-- 좌측: 조작 -->
+  <section class="card controls">
+    <h2>1. 작물 선택</h2>
+    <div id="cropGrid" class="crop-grid"></div>
+
+    <h2>2. 날씨 시나리오 <button id="presetBtn" class="mini" title="시나리오 프리셋">프리셋 ▾</button></h2>
+    <div id="presetMenu" class="preset-menu" hidden></div>
+    <div id="sliders" class="sliders"></div>
+
+    <p class="src">데이터: 기상청·KAMIS·통계청 보도값 기반 교육용 근사 모델 (2018–2025 월별)</p>
+  </section>
+
+  <!-- 우측: 결과 -->
+  <section class="result-col">
+    <div class="card result" id="resultCard">
+      <div class="result-top">
+        <div>
+          <span class="res-label">예측 도매가격</span>
+          <div class="price"><span id="predPrice">—</span><small>원/kg</small></div>
+        </div>
+        <div class="pct-badge" id="pctBadge">—</div>
+      </div>
+      <div class="bar-compare">
+        <div class="bar-row"><span>평년</span><div class="bar"><i id="barNormal"></i></div><b id="normalVal">—</b></div>
+        <div class="bar-row"><span>예측</span><div class="bar"><i id="barPred" class="pred"></i></div><b id="predVal">—</b></div>
+      </div>
+      <p class="headline" id="headline">시나리오를 조절하면 예측이 실시간으로 갱신됩니다.</p>
+      <p class="drivers" id="drivers"></p>
+      <p class="note" id="note"></p>
+      <div class="r2" id="r2box"></div>
+    </div>
+
+    <div class="card">
+      <h2>과거 가격 추이 & 기상 사건</h2>
+      <canvas id="chart" height="240"></canvas>
+      <div class="legend"><span class="lg lg-price">도매가격</span><span class="lg lg-pred">현재 예측</span><span class="lg lg-ev">기상 사건</span></div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h2>기상-가격 상관관계</h2>
+        <div id="corr" class="corr"></div>
+        <p class="src" id="corrNote"></p>
+      </div>
+      <div class="card adapt">
+        <h2>💡 해결·적응 방안</h2>
+        <ul id="adapt"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>기상·기후 AI 해커톤 출품작 · 기후플레이션 교육 도구 · 프론트엔드(Canvas) + 백엔드(Python REST·회귀모델)</p>
+</footer>
+
+<!-- 퀴즈 모달 -->
+<div id="quizModal" class="modal" hidden>
+  <div class="modal-box">
+    <button class="modal-close" id="quizClose">✕</button>
+    <h2 id="quizQ">문제</h2>
+    <div id="quizOpts" class="quiz-opts"></div>
+    <p id="quizFb" class="quiz-fb"></p>
+    <div class="quiz-foot"><span id="quizScore"></span><button id="quizNext" class="primary">다음</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
