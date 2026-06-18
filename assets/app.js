@@ -491,6 +491,12 @@ function bind() {
   $("panelToggle").onclick = () => $("panel").classList.toggle("open");
   $("quizBtn").onclick = openQuiz;
   $("quizClose").onclick = () => $("quizModal").hidden = true;
+  // 온보딩 힌트: 닫기 버튼 또는 첫 조작 시 사라짐
+  const closeOnboard = () => { const o = $("onboard"); if (o) o.style.display = "none"; };
+  $("onboardClose").onclick = closeOnboard;
+  view.addEventListener("mousedown", closeOnboard, { once: true });
+  view.addEventListener("touchstart", closeOnboard, { once: true });
+  setTimeout(closeOnboard, 11000);
 
   // 포인터(마우스 + 터치)
   view.addEventListener("mousedown", pointerDown);
