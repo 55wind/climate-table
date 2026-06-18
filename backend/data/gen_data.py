@@ -34,9 +34,9 @@ CROPS = {
         "season": {8: 200, 9: 260, 10: 240, 11: 220},
         "icon": "🌰",
     },
-    "사과": {  # 연 1회 수확. 봄 개화기 냉해·여름 호우에 민감(연중 가격에 반영)
+    "사과": {  # 연 1회 수확. 봄 개화기 냉해가 그 해 작황·연중 가격을 좌우
         "base": 2600, "unit": "원/kg",
-        "sens": {"heat": 9, "drought": 3.0, "heavy_rain": 16, "cold": 2, "frost": 30, "sun": -2.0},
+        "sens": {"heat": 9, "drought": 3.0, "heavy_rain": 16, "cold": 2, "frost": 120, "sun": -2.0},
         "season": {1: 300, 2: 350, 3: 300, 8: -150, 9: -250, 10: -300},  # 햇사과 출하기 하락
         "icon": "🍎",
     },
@@ -127,18 +127,30 @@ def price_for(crop, w, prev):
 
 
 def main():
+    # pass1: 월별 기상 생성
+    weather = [gen_month(y, m) for y in YEARS for m in MONTHS]
+    # 연도별 봄 냉해(4월) 강도
+    spring = {}
+    for w in weather:
+        if w["month"] == 4:
+            spring[w["year"]] = max(spring.get(w["year"], 0), w["frost"])
+    for y in YEARS:
+        spring.setdefault(y, 0)
+    # 냉해를 그 해 전체로 전파(연1회 수확 작물의 연중 가격 신호) — 5~12월은 당해, 1~4월은 전년 봄
+    for w in weather:
+        y, m = w["year"], w["month"]
+        w["frost"] = int(spring.get(y, 0) if m >= 5 else spring.get(y - 1, 0))
+    # pass2: 가격 산출
     rows = []
     prev = {k: None for k in CROPS}
-    for y in YEARS:
-        for m in MONTHS:
-            w = gen_month(y, m)
-            prices = {}
-            for crop in CROPS:
-                pr = price_for(crop, w, prev[crop])
-                prices[crop] = pr
-                prev[crop] = pr
-            w["prices"] = prices
-            rows.append(w)
+    for w in weather:
+        prices = {}
+        for crop in CROPS:
+            pr = price_for(crop, w, prev[crop])
+            prices[crop] = pr
+            prev[crop] = pr
+        w["prices"] = prices
+        rows.append(w)
 
     items = [{"name": k, "icon": v["icon"], "unit": v["unit"], "base": v["base"]} for k, v in CROPS.items()]
     # 평년 가격(작물별 전체 평균)
