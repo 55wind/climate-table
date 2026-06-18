@@ -89,7 +89,7 @@ class ClimateModel:
         A = [_design(r) for r in self.rows]
         for crop in self.items:
             y = [r["prices"][crop] for r in self.rows]
-            coef = _solve(A, y, ridge=2.0)
+            coef = _solve(A, y, ridge=18.0)
             self.coefs[crop] = coef
             # R²
             ybar = sum(y) / len(y)

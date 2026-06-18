@@ -133,15 +133,16 @@ async function doSimulate() {
 }
 
 function renderResult(res) {
+  const ref = res.baseline != null ? res.baseline : res.normal;
   $("predPrice").textContent = res.predicted.toLocaleString();
   $("predVal").textContent = res.predicted.toLocaleString() + "원";
-  $("normalVal").textContent = res.normal.toLocaleString() + "원";
+  $("normalVal").textContent = ref.toLocaleString() + "원";
   const pct = res.explain.pct;
   const badge = $("pctBadge");
   badge.textContent = (pct > 0 ? "+" : "") + pct + "%";
   badge.className = "pct-badge " + (pct >= 0 ? "up" : "down");
-  const maxv = Math.max(res.predicted, res.normal) * 1.05;
-  $("barNormal").style.width = (res.normal / maxv * 100) + "%";
+  const maxv = Math.max(res.predicted, ref) * 1.05;
+  $("barNormal").style.width = (ref / maxv * 100) + "%";
   $("barPred").style.width = (res.predicted / maxv * 100) + "%";
   $("headline").textContent = res.explain.headline;
   $("drivers").textContent = res.explain.drivers;

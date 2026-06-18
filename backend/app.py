@@ -56,23 +56,26 @@ QUIZ = [
      "fb": "기상예보·조기경보를 활용한 파종 시기 조정이 핵심 적응 전략입니다."},
 ]
 
+# 평년(보통) 기상 — 시나리오의 '날씨 효과'를 분리하기 위한 같은-시기 비교 기준
+BASELINE = {"heat_days": 6, "cold_days": 2, "heavy_rain_days": 2, "drought_idx": 20, "frost": 0}
+
 CONTENT = {".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8",
            ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
            ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon"}
 
 
-def explain(crop, pred, normal, contribs):
-    pct = round((pred - normal) / normal * 100)
+def explain(crop, pred, ref, contribs):
+    pct = round((pred - ref) / ref * 100)
     top = [c for c in contribs if abs(c["contrib"]) >= 20][:3]
     drivers = ", ".join(f"{c['label']}({'+' if c['contrib']>0 else ''}{c['contrib']}원)" for c in top)
     if pct >= 25:
-        head = f"평년보다 {pct}% 비싸집니다. 식탁 물가에 큰 부담입니다."
+        head = f"이 날씨면 같은 시기 평년보다 {pct}% 비싸집니다. 식탁 물가에 큰 부담입니다."
     elif pct >= 8:
-        head = f"평년보다 {pct}% 오릅니다."
+        head = f"이 날씨면 같은 시기 평년보다 {pct}% 오릅니다."
     elif pct <= -8:
-        head = f"평년보다 {abs(pct)}% 저렴해집니다(풍작 경향)."
+        head = f"이 날씨면 같은 시기 평년보다 {abs(pct)}% 저렴해집니다(풍작 경향)."
     else:
-        head = "평년과 비슷한 수준입니다."
+        head = "같은 시기 평년 날씨와 비슷한 수준입니다."
     body = f"주요 요인: {drivers}." if drivers else "기상 요인 영향이 크지 않습니다."
     return {"pct": pct, "headline": head, "drivers": body, "note": CLIMATE_NOTE.get(crop, "")}
 
@@ -152,13 +155,16 @@ class Handler(BaseHTTPRequestHandler):
                 scen["sun_hr"] = float(body["sun_hr"])
             pred = MODEL.predict(crop, scen, month=month)
             normal = MODEL.normals[crop]
+            # 같은 시기 평년 기상 기준 → 날씨 효과만 분리
+            ref = MODEL.predict(crop, dict(BASELINE), month=month)
             contribs = MODEL.contributions(crop, scen, month=month)
             return self._json({
                 "item": crop, "predicted": pred, "normal": normal,
+                "baseline": ref,
                 "r2": round(MODEL.r2[crop], 3),
                 "reliability": MODEL.reliability(crop),
                 "contributions": contribs,
-                "explain": explain(crop, pred, normal, contribs),
+                "explain": explain(crop, pred, ref, contribs),
                 "adapt": ADAPT.get(crop, []),
             })
         except Exception as e:  # noqa
