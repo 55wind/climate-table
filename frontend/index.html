@@ -44,11 +44,12 @@
 
   <!-- 우측: 결과 -->
   <section class="result-col">
-    <div class="card result" id="resultCard">
+    <div class="card result" id="resultCard" role="region" aria-live="polite" aria-label="가격 예측 결과">
       <div class="result-top">
         <div>
           <span class="res-label">예측 도매가격</span>
           <div class="price"><span id="predPrice">—</span><small>원/kg</small></div>
+          <p class="pack" id="packPrice"></p>
         </div>
         <div class="pct-badge" id="pctBadge">—</div>
       </div>

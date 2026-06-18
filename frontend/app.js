@@ -19,6 +19,13 @@ const SLIDERS = [
   { key: "month", label: "기준 월", unit: "월", min: 1, max: 12, hint: "계절 효과" },
 ];
 
+// 가계 체감 단위(소매 환산용 대략 중량)
+const UNIT_PACK = {
+  "배추": { label: "한 포기", kg: 2.5 }, "무": { label: "1개", kg: 1.0 },
+  "사과": { label: "1개", kg: 0.3 }, "쌀": { label: "20kg 한 포대", kg: 20 },
+  "시금치": { label: "1단", kg: 0.4 }, "양파": { label: "1망(1.5kg)", kg: 1.5 },
+};
+
 const PRESETS = [
   { name: "🌡️ 2024 폭염·가뭄 (배추 대란)", s: { heat_days: 28, heavy_rain_days: 3, drought_idx: 75, cold_days: 0, frost: 0, month: 8 } },
   { name: "🌧️ 2020 역대 최장 장마", s: { heat_days: 4, heavy_rain_days: 9, drought_idx: 0, cold_days: 0, frost: 0, month: 7 } },
@@ -59,7 +66,8 @@ function buildCrops() {
   const g = $("cropGrid"); g.innerHTML = "";
   for (const it of state.items) {
     const b = document.createElement("button");
-    b.innerHTML = `<span class="ico">${it.icon}</span>${it.name}`;
+    b.innerHTML = `<span class="ico" aria-hidden="true">${it.icon}</span>${it.name}`;
+    b.setAttribute("aria-label", it.name + " 선택");
     b.classList.toggle("active", it.name === state.item);
     b.onclick = () => selectCrop(it.name);
     g.appendChild(b);
@@ -70,7 +78,7 @@ function buildSliders() {
   for (const sl of SLIDERS) {
     const wrap = document.createElement("div"); wrap.className = "slider";
     wrap.innerHTML = `<div class="lab"><span>${sl.label} <small style="color:#6b7888">${sl.hint}</small></span><b id="v_${sl.key}"></b></div>
-      <input type="range" id="s_${sl.key}" min="${sl.min}" max="${sl.max}" step="1">`;
+      <input type="range" id="s_${sl.key}" min="${sl.min}" max="${sl.max}" step="1" aria-label="${sl.label} (${sl.hint})">`;
     c.appendChild(wrap);
     const input = wrap.querySelector("input");
     input.value = state.scenario[sl.key];
@@ -143,6 +151,8 @@ function renderResult(res) {
   badge.className = "pct-badge " + (pct >= 0 ? "up" : "down");
   const maxv = Math.max(res.predicted, ref) * 1.05;
   $("barNormal").style.width = (ref / maxv * 100) + "%";
+  const pk = UNIT_PACK[state.item];
+  $("packPrice").textContent = pk ? `${pk.label} ≈ ${Math.round(res.predicted * pk.kg).toLocaleString()}원` : "";
   $("barPred").style.width = (res.predicted / maxv * 100) + "%";
   $("headline").textContent = res.explain.headline;
   $("drivers").textContent = res.explain.drivers;
