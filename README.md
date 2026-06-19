@@ -81,7 +81,22 @@ PLAN.md  PROGRESS.md   # 자율 개선 루프 운영 파일
 
 > **실제 데이터 대조 검증**: 모델의 평년가·사건 절대가격이 실제와 일치함을 확인했습니다. 예) 배추 폭염 예측 3,950원/kg = 실제 도매 3,594~4,150원/kg, 사과 금사과 예측 6,910원/kg = 실제 5,141~7,767원/kg. 상세·출처는 [`docs/검증-실제데이터대조.md`](docs/검증-실제데이터대조.md) 참고.
 
-본선 단계에서 기상청·KAMIS OpenAPI 실데이터 연동으로 전 시계열을 실측값으로 교체할 예정입니다.
+### 실데이터로 교체 (KAMIS + 기상청 OpenAPI)
+
+`backend/data/fetch_real_data.py`가 KAMIS 월별 도매가 + 기상청 ASOS 일자료를 받아 `dataset.json`을 실측값으로 교체합니다(표준 라이브러리만, 의존성 0).
+
+```bash
+# 1) 무료 인증키 발급
+#    - KAMIS : https://www.kamis.or.kr/customer/reference/openapi_list.do
+#    - 기상청 : https://www.data.go.kr  '기상청 ASOS 일자료 조회서비스'
+# 2) 환경변수 설정 (PowerShell)
+$env:KAMIS_CERT_KEY="..."; $env:KAMIS_CERT_ID="..."; $env:KMA_SERVICE_KEY="..."
+# 3) 수집 실행 → dataset.json 교체
+python backend/data/fetch_real_data.py --start 2018-01 --end 2025-12
+# 4) 백엔드 재기동하면 실데이터 반영. /api/health 의 source 로 확인.
+```
+
+키가 없으면 스크립트는 데이터를 건드리지 않고 발급 안내만 출력하며, 백엔드는 **실측 보정 데이터로 정상 동작**합니다. 현재 활성 데이터 출처는 화면 상단 연결 상태와 `/api/health`의 `source`에 표시됩니다.
 
 ---
 © 2026 기상·기후 AI 해커톤 출품작 · 교육 목적

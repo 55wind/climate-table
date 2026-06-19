@@ -110,7 +110,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if p == "/api/health":
                 return self._json({"status": "ok", "crops": MODEL.items,
-                                   "months": len(MODEL.rows)})
+                                   "months": len(MODEL.rows),
+                                   "source": MODEL.data.get("meta", {}).get("source", "보정 데이터(calibrated)")})
             if p == "/api/items":
                 return self._json({"items": MODEL.data["items"], "normals": MODEL.normals,
                                    "events": MODEL.data["events"], "features": FEATURES})

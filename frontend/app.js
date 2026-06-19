@@ -46,7 +46,8 @@ async function api(path, opts) {
 async function init() {
   try {
     const h = await api("/api/health");
-    $("health").textContent = "● 백엔드 연결됨 (" + h.crops.length + "작물 · " + h.months + "개월)";
+    const src = h.source ? " · " + h.source : "";
+    $("health").textContent = "● 백엔드 연결됨 (" + h.crops.length + "작물 · " + h.months + "개월" + src + ")";
     $("health").className = "health ok";
   } catch (e) {
     $("health").textContent = "● 백엔드 미연결 (python backend/app.py 실행 필요)";
