@@ -226,7 +226,7 @@ function drawChart() {
   const Y = v => pad.t + (1 - (v - lo) / (hi - lo)) * (h - pad.t - pad.b);
 
   // y 그리드
-  ctx.font = "10px Pretendard"; ctx.textBaseline = "middle";
+  ctx.font = "10px Inter, Pretendard"; ctx.textBaseline = "middle";
   for (let k = 0; k <= 4; k++) {
     const v = lo + (hi - lo) * k / 4, y = Y(v);
     ctx.strokeStyle = "rgba(0,0,0,0.06)"; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
@@ -249,7 +249,7 @@ function drawChart() {
     const x = X(idx);
     ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#86868b"; ctx.font = "9px Pretendard";
+    ctx.fillStyle = "#86868b"; ctx.font = "9px Inter, Pretendard";
     ctx.save(); ctx.translate(x, pad.t + 2); ctx.fillText("▼", 0, 0); ctx.restore();
   }
   // 평년선
@@ -263,7 +263,7 @@ function drawChart() {
   if (lastPred != null) {
     ctx.strokeStyle = "#0066cc"; ctx.lineWidth = 1.6; ctx.setLineDash([6, 3]);
     ctx.beginPath(); ctx.moveTo(pad.l, Y(lastPred)); ctx.lineTo(w - pad.r, Y(lastPred)); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#0066cc"; ctx.textAlign = "left"; ctx.font = "700 10px Pretendard";
+    ctx.fillStyle = "#0066cc"; ctx.textAlign = "left"; ctx.font = "700 10px Inter, Pretendard";
     ctx.fillText("예측 " + lastPred.toLocaleString() + "원", pad.l + 4, Y(lastPred) - 6);
   }
 }
@@ -291,26 +291,46 @@ function drawMap(pct) {
   const [jx, jy] = P(SK_JEJU.lon, SK_JEJU.lat);
   ctx.beginPath(); ctx.ellipse(jx, jy, SK_JEJU.r * cosM * sc, SK_JEJU.r * sc * 0.7, 0, 0, 7);
   ctx.fillStyle = "#eceae3"; ctx.fill(); ctx.stroke();
-  // 산지 원
+  // 산지 점 계산
   const regions = CROP_REGIONS[state.item] || [];
-  ctx.textAlign = "center";
-  regions.forEach(r => {
+  const pts = regions.map(r => {
     const [x, y] = P(r.lon, r.lat);
-    const impact = Math.max(0, pct) * r.w;            // 가격 상승 압력
-    const alpha = Math.min(0.82, 0.1 + impact / 80 * 0.72);
-    const rad = 7 + r.w * 4.5 + Math.min(11, Math.max(0, pct) / 80 * 11);
-    ctx.beginPath(); ctx.arc(x, y, rad, 0, 7);
-    ctx.fillStyle = pct >= 0 ? `rgba(0,102,204,${alpha})` : `rgba(134,134,139,0.25)`;
-    ctx.fill();
-    ctx.lineWidth = 1.2; ctx.strokeStyle = pct >= 0 ? "rgba(0,102,204,0.9)" : "rgba(134,134,139,0.7)"; ctx.stroke();
-    // 라벨
-    ctx.fillStyle = "#1d1d1f"; ctx.font = "600 11px Pretendard";
-    ctx.fillText(r.n, x, y - rad - 5);
-    ctx.fillStyle = pct >= 0 ? "#0066cc" : "#86868b"; ctx.font = "700 11px Pretendard";
-    ctx.fillText((pct > 0 ? "+" : "") + Math.round(impact) + "%", x, y + 4);
+    const impact = Math.max(0, pct) * r.w;
+    const rad = 7 + r.w * 4 + Math.min(9, Math.max(0, pct) / 80 * 9);
+    return { r, x0: x, y0: y, x, y, rad, impact };
   });
+  // 겹침 분리(반발 + 원위치 스프링)
+  for (let it = 0; it < 90; it++) {
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      const a = pts[i], b = pts[j];
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, min = a.rad + b.rad + 16;
+      if (d < min) { const push = (min - d) / 2, ux = dx / d, uy = dy / d; a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push; }
+    }
+    for (const p of pts) {
+      p.x += (p.x0 - p.x) * 0.03; p.y += (p.y0 - p.y) * 0.03;
+      p.x = Math.max(p.rad + 20, Math.min(w - p.rad - 20, p.x));
+      p.y = Math.max(p.rad + 16, Math.min(h - p.rad - 24, p.y));
+    }
+  }
+  // 그리기 (연결선 → 원 → 라벨)
+  ctx.textAlign = "center";
+  for (const p of pts) {
+    if (Math.hypot(p.x - p.x0, p.y - p.y0) > 3) {
+      ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.x0, p.y0); ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.arc(p.x0, p.y0, 2, 0, 7); ctx.fill();
+    }
+  }
+  for (const p of pts) {
+    const alpha = Math.min(0.82, 0.1 + p.impact / 80 * 0.72);
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.rad, 0, 7);
+    ctx.fillStyle = pct >= 0 ? `rgba(0,102,204,${alpha})` : "rgba(134,134,139,0.22)"; ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = pct >= 0 ? "rgba(0,102,204,0.9)" : "rgba(134,134,139,0.7)"; ctx.stroke();
+    ctx.fillStyle = "#1d1d1f"; ctx.font = "600 11px Inter, Pretendard"; ctx.fillText(p.r.n, p.x, p.y - p.rad - 5);
+    ctx.fillStyle = pct >= 0 ? "#0066cc" : "#86868b"; ctx.font = "700 11px Inter, Pretendard"; ctx.fillText((pct > 0 ? "+" : "") + Math.round(p.impact) + "%", p.x, p.y + 4);
+  }
   // 범례
-  ctx.textAlign = "left"; ctx.fillStyle = "#86868b"; ctx.font = "11px Pretendard";
+  ctx.textAlign = "left"; ctx.fillStyle = "#86868b"; ctx.font = "11px Inter, Pretendard";
   ctx.fillText(state.item + " 주요 산지 · 가격 상승 압력", pad + 2, h - 8);
 }
 

@@ -14,7 +14,9 @@
   --hairline:#e0e0e0;
   --divider:#f0f0f0;
   --chip:#d2d2d7;
-  --sans:-apple-system,BlinkMacSystemFont,"Pretendard Variable",Pretendard,"SF Pro Text","SF Pro Display",system-ui,"Apple SD Gothic Neo",sans-serif;
+  /* Inter(라틴·숫자, Figma 추천 1위) + Pretendard(한글). 한글은 Inter에 글리프가
+     없어 자동으로 Pretendard로 폴백됨. SF Pro 대체로도 권장되는 조합. */
+  --sans:"Inter","Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,"Apple SD Gothic Neo",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
