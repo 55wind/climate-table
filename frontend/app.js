@@ -26,6 +26,26 @@ const UNIT_PACK = {
   "시금치": { label: "1단", kg: 0.4 }, "양파": { label: "1망(1.5kg)", kg: 1.5 },
 };
 
+// 남한 단순화 외곽선 [경도,위도] + 제주
+const SK_OUTLINE = [
+  [126.55, 37.75], [126.40, 37.0], [126.50, 36.6], [126.30, 36.0], [126.50, 35.6],
+  [126.30, 35.0], [126.45, 34.6], [126.9, 34.4], [127.5, 34.5], [127.8, 34.75],
+  [128.4, 34.85], [128.7, 35.0], [129.1, 35.1], [129.45, 35.6], [129.5, 36.05],
+  [129.4, 36.6], [129.1, 37.2], [128.9, 37.75], [128.6, 38.25], [128.4, 38.55],
+  [128.0, 38.35], [127.3, 38.30], [126.9, 38.10], [126.55, 37.95], [126.55, 37.75]
+];
+const SK_JEJU = { lon: 126.5, lat: 33.4, r: 0.42 };
+const SK_DOMAIN = { lonMin: 125.7, lonMax: 130.0, latMin: 32.9, latMax: 38.9 };
+// 작물별 주요 산지: {name, lon, lat, w(상대 민감도·비중)}
+const CROP_REGIONS = {
+  "배추": [{ n: "강원 고랭지", lon: 128.4, lat: 37.6, w: 1.3 }, { n: "전남 해남", lon: 126.6, lat: 34.6, w: 1.0 }, { n: "충북", lon: 127.6, lat: 36.8, w: 0.9 }, { n: "경북", lon: 128.7, lat: 36.4, w: 0.85 }],
+  "무": [{ n: "강원", lon: 128.4, lat: 37.6, w: 1.2 }, { n: "제주", lon: 126.55, lat: 33.4, w: 1.1 }, { n: "전남", lon: 126.8, lat: 34.8, w: 1.0 }],
+  "사과": [{ n: "경북 청송", lon: 129.0, lat: 36.4, w: 1.25 }, { n: "충북 충주", lon: 127.9, lat: 37.0, w: 1.0 }, { n: "경남 거창", lon: 127.9, lat: 35.7, w: 0.9 }, { n: "강원(신규)", lon: 128.4, lat: 37.7, w: 0.7 }],
+  "쌀": [{ n: "전북", lon: 127.0, lat: 35.8, w: 1.0 }, { n: "충남", lon: 126.9, lat: 36.5, w: 1.0 }, { n: "전남", lon: 126.9, lat: 34.95, w: 1.0 }],
+  "시금치": [{ n: "경남 남해", lon: 127.9, lat: 34.85, w: 1.1 }, { n: "전남 신안", lon: 126.4, lat: 34.8, w: 1.0 }, { n: "경북 포항", lon: 129.3, lat: 36.0, w: 1.0 }],
+  "양파": [{ n: "전남 무안", lon: 126.5, lat: 34.95, w: 1.2 }, { n: "경남 창녕", lon: 128.5, lat: 35.5, w: 1.1 }, { n: "제주", lon: 126.55, lat: 33.4, w: 0.85 }],
+};
+
 const PRESETS = [
   { name: "2024 폭염·가뭄 (배추 대란)", s: { heat_days: 28, heavy_rain_days: 3, drought_idx: 75, cold_days: 0, frost: 0, month: 8 } },
   { name: "2020 역대 최장 장마", s: { heat_days: 4, heavy_rain_days: 9, drought_idx: 0, cold_days: 0, frost: 0, month: 7 } },
@@ -66,7 +86,7 @@ async function init() {
     if (localStorage.getItem("ct_onboard_done")) ob.style.display = "none";
     $("onboardClose").onclick = () => { ob.style.display = "none"; try { localStorage.setItem("ct_onboard_done", "1"); } catch (e) {} };
   }
-  window.addEventListener("resize", () => drawChart());
+  window.addEventListener("resize", () => { drawChart(); drawMap(lastPct); });
 }
 
 function buildCrops() {
@@ -130,7 +150,7 @@ async function selectCrop(name) {
 }
 
 /* ---------- 시뮬레이션 (디바운스) ---------- */
-let simTimer = null, lastPred = null;
+let simTimer = null, lastPred = null, lastPct = 0;
 function simulate() {
   clearTimeout(simTimer);
   simTimer = setTimeout(doSimulate, 110);
@@ -144,8 +164,10 @@ async function doSimulate() {
     });
   } catch (e) { toast("예측 요청 실패"); return; }
   lastPred = res.predicted;
+  lastPct = res.explain.pct;
   renderResult(res);
   drawChart();
+  drawMap(lastPct);
 }
 
 function renderResult(res) {
@@ -244,6 +266,52 @@ function drawChart() {
     ctx.fillStyle = "#0066cc"; ctx.textAlign = "left"; ctx.font = "700 10px Pretendard";
     ctx.fillText("예측 " + lastPred.toLocaleString() + "원", pad.l + 4, Y(lastPred) - 6);
   }
+}
+
+/* ---------- 지역별 영향 지도 (Canvas, 세팅값 반응) ---------- */
+function drawMap(pct) {
+  const cv = $("mapCanvas"); if (!cv) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = cv.clientWidth, h = 320;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const D = SK_DOMAIN, pad = 12;
+  const lonSpan = (D.lonMax - D.lonMin) * Math.cos(36 * Math.PI / 180), latSpan = D.latMax - D.latMin;
+  const sc = Math.min((w - pad * 2) / lonSpan, (h - pad * 2) / latSpan);
+  const cxp = w / 2, cyp = h / 2, midLon = (D.lonMin + D.lonMax) / 2, midLat = (D.latMin + D.latMax) / 2, cosM = Math.cos(36 * Math.PI / 180);
+  const P = (lon, lat) => [cxp + (lon - midLon) * cosM * sc, cyp - (lat - midLat) * sc];
+  // 외곽선
+  ctx.beginPath();
+  SK_OUTLINE.forEach((p, i) => { const [x, y] = P(p[0], p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.closePath();
+  ctx.fillStyle = "#eceae3"; ctx.fill();
+  ctx.strokeStyle = "#cfcabd"; ctx.lineWidth = 1; ctx.stroke();
+  // 제주
+  const [jx, jy] = P(SK_JEJU.lon, SK_JEJU.lat);
+  ctx.beginPath(); ctx.ellipse(jx, jy, SK_JEJU.r * cosM * sc, SK_JEJU.r * sc * 0.7, 0, 0, 7);
+  ctx.fillStyle = "#eceae3"; ctx.fill(); ctx.stroke();
+  // 산지 원
+  const regions = CROP_REGIONS[state.item] || [];
+  ctx.textAlign = "center";
+  regions.forEach(r => {
+    const [x, y] = P(r.lon, r.lat);
+    const impact = Math.max(0, pct) * r.w;            // 가격 상승 압력
+    const alpha = Math.min(0.82, 0.1 + impact / 80 * 0.72);
+    const rad = 7 + r.w * 4.5 + Math.min(11, Math.max(0, pct) / 80 * 11);
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, 7);
+    ctx.fillStyle = pct >= 0 ? `rgba(0,102,204,${alpha})` : `rgba(134,134,139,0.25)`;
+    ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = pct >= 0 ? "rgba(0,102,204,0.9)" : "rgba(134,134,139,0.7)"; ctx.stroke();
+    // 라벨
+    ctx.fillStyle = "#1d1d1f"; ctx.font = "600 11px Pretendard";
+    ctx.fillText(r.n, x, y - rad - 5);
+    ctx.fillStyle = pct >= 0 ? "#0066cc" : "#86868b"; ctx.font = "700 11px Pretendard";
+    ctx.fillText((pct > 0 ? "+" : "") + Math.round(impact) + "%", x, y + 4);
+  });
+  // 범례
+  ctx.textAlign = "left"; ctx.fillStyle = "#86868b"; ctx.font = "11px Pretendard";
+  ctx.fillText(state.item + " 주요 산지 · 가격 상승 압력", pad + 2, h - 8);
 }
 
 /* ---------- 탭 전환 ---------- */
