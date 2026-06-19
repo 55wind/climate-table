@@ -208,14 +208,14 @@ function drawChart() {
   for (let k = 0; k <= 4; k++) {
     const v = lo + (hi - lo) * k / 4, y = Y(v);
     ctx.strokeStyle = "rgba(0,0,0,0.07)"; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
-    ctx.fillStyle = "#9a948a"; ctx.textAlign = "right"; ctx.fillText(Math.round(v).toLocaleString(), pad.l - 6, y);
+    ctx.fillStyle = "#6f6a5e"; ctx.textAlign = "right"; ctx.fillText(Math.round(v).toLocaleString(), pad.l - 6, y);
   }
   // x 연도
   ctx.textAlign = "center";
   data.forEach((d, i) => {
     if (d.month === 1) {
       const x = X(i);
-      ctx.fillStyle = "#9a948a"; ctx.fillText(d.date.slice(0, 4), x, h - 8);
+      ctx.fillStyle = "#6f6a5e"; ctx.fillText(d.date.slice(0, 4), x, h - 8);
       ctx.strokeStyle = "rgba(0,0,0,0.05)"; ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke();
     }
   });
@@ -227,21 +227,21 @@ function drawChart() {
     const x = X(idx);
     ctx.strokeStyle = "rgba(154,148,138,0.55)"; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#9a948a"; ctx.font = "9px Pretendard";
+    ctx.fillStyle = "#6f6a5e"; ctx.font = "9px Pretendard";
     ctx.save(); ctx.translate(x, pad.t + 2); ctx.fillText("▼", 0, 0); ctx.restore();
   }
   // 평년선
   ctx.strokeStyle = "rgba(116,111,100,0.5)"; ctx.setLineDash([5, 4]);
   ctx.beginPath(); ctx.moveTo(pad.l, Y(state.normal)); ctx.lineTo(w - pad.r, Y(state.normal)); ctx.stroke(); ctx.setLineDash([]);
   // 가격선
-  ctx.strokeStyle = "#1c1b18"; ctx.lineWidth = 1.8; ctx.beginPath();
+  ctx.strokeStyle = "#16140f"; ctx.lineWidth = 1.8; ctx.beginPath();
   data.forEach((d, i) => { const x = X(i), y = Y(d.price); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
   ctx.stroke();
   // 현재 예측선
   if (lastPred != null) {
-    ctx.strokeStyle = "#c2410c"; ctx.lineWidth = 1.6; ctx.setLineDash([6, 3]);
+    ctx.strokeStyle = "#a8321e"; ctx.lineWidth = 1.6; ctx.setLineDash([6, 3]);
     ctx.beginPath(); ctx.moveTo(pad.l, Y(lastPred)); ctx.lineTo(w - pad.r, Y(lastPred)); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#c2410c"; ctx.textAlign = "left"; ctx.font = "700 10px Pretendard";
+    ctx.fillStyle = "#a8321e"; ctx.textAlign = "left"; ctx.font = "700 10px Pretendard";
     ctx.fillText("예측 " + lastPred.toLocaleString() + "원", pad.l + 4, Y(lastPred) - 6);
   }
 }
