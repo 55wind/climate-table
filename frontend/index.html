@@ -51,16 +51,22 @@
       <span class="fact-src">출처: KBS·가락시장 도매 2024.9</span>
     </div>
   </div>
+  <div id="onboard" class="onboard">
+    <span><b>사용법</b> — 작물을 고르고, <b>빠른 시나리오</b>를 누르거나 슬라이더를 움직이면 가격이 즉시 바뀝니다.</span>
+    <button id="onboardClose" type="button" aria-label="안내 닫기">확인</button>
+  </div>
 </section>
 
 <main class="grid">
   <!-- 좌측: 조작 -->
   <section class="card controls">
-    <h2>1. 작물 선택</h2>
+    <h2>작물 선택</h2>
     <div id="cropGrid" class="crop-grid"></div>
 
-    <h2>2. 날씨 시나리오 <button id="presetBtn" class="mini" title="시나리오 프리셋">프리셋 ▾</button></h2>
-    <div id="presetMenu" class="preset-menu" hidden></div>
+    <h2>빠른 시나리오</h2>
+    <div id="presetMenu" class="preset-menu"></div>
+
+    <h2 class="mt">날씨 직접 조절 <button id="resetBtn" class="mini" type="button">평년으로 초기화</button></h2>
     <div id="sliders" class="sliders"></div>
 
     <p class="src">데이터: 기상청·KAMIS·통계청 보도값 기반 교육용 근사 모델 (2018–2025 월별)</p>

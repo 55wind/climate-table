@@ -60,6 +60,12 @@ async function init() {
   buildCrops(); buildSliders(); buildPresets();
   await selectCrop(state.item);
   bindQuiz();
+  // 온보딩 배너: 1회 노출(이전에 닫았으면 숨김)
+  const ob = $("onboard");
+  if (ob) {
+    if (localStorage.getItem("ct_onboard_done")) ob.style.display = "none";
+    $("onboardClose").onclick = () => { ob.style.display = "none"; try { localStorage.setItem("ct_onboard_done", "1"); } catch (e) {} };
+  }
   window.addEventListener("resize", () => drawChart());
 }
 
@@ -92,14 +98,15 @@ function buildSliders() {
   }
 }
 function buildPresets() {
-  const btn = $("presetBtn"), menu = $("presetMenu");
+  const menu = $("presetMenu");
   menu.innerHTML = "";
   for (const p of PRESETS) {
-    const b = document.createElement("button"); b.textContent = p.name;
-    b.onclick = () => { applyScenario(p.s); menu.hidden = true; };
+    const b = document.createElement("button"); b.type = "button"; b.textContent = p.name;
+    b.onclick = () => applyScenario(p.s);
     menu.appendChild(b);
   }
-  btn.onclick = () => menu.hidden = !menu.hidden;
+  const reset = $("resetBtn");
+  if (reset) reset.onclick = () => applyScenario(PRESETS[PRESETS.length - 1].s); // 평년(기준)
 }
 function applyScenario(s) {
   state.scenario = Object.assign({}, s);
@@ -162,6 +169,9 @@ function renderResult(res) {
   $("r2box").innerHTML = `기상 설명력 <b>R² = ${res.r2}</b> · 신뢰도 <b>${rel.label}</b><br><span style="color:#6b7888">${rel.reason}</span>`;
   const ul = $("adapt"); ul.innerHTML = "";
   for (const a of res.adapt) { const li = document.createElement("li"); li.textContent = a; ul.appendChild(li); }
+  // 상태 가시성: 결과 갱신을 잠깐 강조
+  const card = $("resultCard");
+  card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
 }
 
 function renderCorr(corrs) {
