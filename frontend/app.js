@@ -258,7 +258,7 @@ function setupTabs() {
     window.scrollTo(0, 0);
   };
   tSim.onclick = () => show("sim");
-  tQuiz.onclick = () => show("quiz");
+  tQuiz.onclick = () => { show("quiz"); ensureQuiz(); };
   goSim = () => show("sim");
 }
 
@@ -270,22 +270,37 @@ const CHALLENGE = {
   o: ["거의 변화 없음 (±5%)", "+10~20% 안팎", "+40% 이상"], a: 2,
   fb: "폭염·가뭄이 고랭지 배추 작황을 무너뜨려 큰 폭으로 오릅니다."
 };
-let QUIZ = [], qi = 0, qscore = 0, qansd = false, catStats = {};
+let allQuiz = [], QUIZ = [], qi = 0, qscore = 0, qansd = false, catStats = {}, selectedCat = "전체", quizLoaded = false;
 
 function setupQuiz() {
   $("qBegin").onclick = startQuiz;
   $("qNext").onclick = nextQuiz;
 }
+async function ensureQuiz() {
+  if (quizLoaded) return true;
+  try { allQuiz = (await api("/api/quiz")).quiz; } catch (e) { toast("퀴즈를 불러오지 못했습니다"); return false; }
+  quizLoaded = true; buildCatChips(); return true;
+}
+function buildCatChips() {
+  const cats = ["전체"].concat(Array.from(new Set(allQuiz.map(q => q.cat))));
+  const box = $("qCatSel"); box.innerHTML = "";
+  cats.forEach(c => {
+    const b = document.createElement("button"); b.type = "button";
+    b.className = "qchip" + (c === selectedCat ? " active" : ""); b.textContent = c;
+    b.onclick = () => { selectedCat = c; Array.from(box.children).forEach(x => x.classList.toggle("active", x.textContent === c)); };
+    box.appendChild(b);
+  });
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 async function startQuiz() {
-  if (QUIZ.length === 0) {
-    let base;
-    try { base = (await api("/api/quiz")).quiz; } catch (e) { toast("퀴즈를 불러오지 못했습니다"); return; }
-    QUIZ = base.concat([CHALLENGE]);
-  }
+  if (!(await ensureQuiz())) return;
+  const pool = selectedCat === "전체" ? allQuiz.slice() : allQuiz.filter(q => q.cat === selectedCat);
+  QUIZ = shuffle(pool).concat([CHALLENGE]);
   qi = 0; qscore = 0; catStats = {};
   $("qStart").hidden = true; $("qResult").hidden = true; $("qStage").hidden = false;
   renderQ();
 }
+function backToStart() { $("qStage").hidden = true; $("qResult").hidden = true; $("qStart").hidden = false; }
 function renderQ() {
   qansd = false;
   const item = QUIZ[qi], n = QUIZ.length;
@@ -343,7 +358,7 @@ function showResult() {
      <div class="qres-cats">${cats}</div>
      <div class="qres-actions"><button id="qRetry" class="primary" type="button">다시 풀기</button><button id="qGoSim" class="ghost" type="button">시뮬레이터에서 확인</button></div>`;
   $("qResult").hidden = false;
-  $("qRetry").onclick = startQuiz;
+  $("qRetry").innerHTML = "다른 분야 풀기"; $("qRetry").onclick = backToStart;
   $("qGoSim").onclick = () => goSim && goSim();
 }
 
