@@ -6,13 +6,20 @@
 <title>기후 식탁 — 날씨가 바꾸는 우리 밥상</title>
 <meta name="description" content="이상기후가 농산물 가격(기후플레이션)에 미치는 영향을 직접 조작하며 학습하는 인터랙티브 도구. 기상청·KAMIS 데이터 기반 회귀모델." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
-    <span class="logo">🍽️</span>
+    <svg class="logo" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="30" height="30" rx="7" fill="#1c1b18"/>
+      <rect x="6.5" y="17" width="3.6" height="6.5" rx="1" fill="#ffffff"/>
+      <rect x="13.2" y="12.5" width="3.6" height="11" rx="1" fill="#ffffff"/>
+      <rect x="19.9" y="7.5" width="3.6" height="16" rx="1" fill="#c2410c"/>
+    </svg>
     <div>
       <h1>기후 식탁</h1>
       <p>날씨가 바꾸는 우리 밥상 · <b>기후플레이션</b> 학습 시뮬레이터</p>
@@ -20,7 +27,7 @@
   </div>
   <div class="topbar-right">
     <span id="health" class="health">● 연결 확인 중</span>
-    <button id="quizBtn" class="btn-quiz">🎓 학습 퀴즈</button>
+    <button id="quizBtn" class="btn-quiz">학습 퀴즈</button>
   </div>
 </header>
 
@@ -93,7 +100,7 @@
         <p class="src" id="corrNote"></p>
       </div>
       <div class="card adapt">
-        <h2>💡 해결·적응 방안</h2>
+        <h2>해결·적응 방안</h2>
         <ul id="adapt"></ul>
       </div>
     </div>
