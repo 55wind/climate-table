@@ -25,6 +25,20 @@ from urllib.error import URLError, HTTPError
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "dataset.json")
 
+# .env.local(깃 제외)에서 키 로드 → 환경변수보다 우선순위 낮게(환경변수 있으면 그것 사용)
+def _load_env_local():
+    path = os.path.join(HERE, ".env.local")
+    if not os.path.isfile(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
+
+_load_env_local()
 KAMIS_KEY = os.environ.get("KAMIS_CERT_KEY", "")
 KAMIS_ID = os.environ.get("KAMIS_CERT_ID", "")
 KMA_KEY = os.environ.get("KMA_SERVICE_KEY", "")
@@ -151,13 +165,17 @@ def build_weather(start, end):
 
 def main():
     if not (KAMIS_KEY and KAMIS_ID and KMA_KEY):
+        st = lambda v: ("설정됨(" + v[:6] + "…)") if v else "없음"
         print("=" * 64)
-        print(" 실데이터 수집에는 인증키가 필요합니다 (무료 발급).")
-        print("  - KAMIS : https://www.kamis.or.kr/customer/reference/openapi_list.do")
-        print("  - 기상청 : https://www.data.go.kr  '기상청 ASOS 일자료 조회서비스'")
-        print(" 발급 후 환경변수 설정:")
-        print("   KAMIS_CERT_KEY, KAMIS_CERT_ID, KMA_SERVICE_KEY")
-        print(" 키가 없어 dataset.json은 변경하지 않습니다(기존 보정 데이터 유지).")
+        print(" 실데이터 수집 키 상태:")
+        print(f"   KAMIS_CERT_KEY  : {st(KAMIS_KEY)}")
+        print(f"   KAMIS_CERT_ID   : {st(KAMIS_ID)}   (KAMIS는 key와 id 둘 다 필요)")
+        print(f"   KMA_SERVICE_KEY : {st(KMA_KEY)}   (기상청 날씨용)")
+        missing = [n for n, v in [("KAMIS_CERT_ID", KAMIS_ID), ("KMA_SERVICE_KEY", KMA_KEY), ("KAMIS_CERT_KEY", KAMIS_KEY)] if not v]
+        print(" 부족: " + ", ".join(missing))
+        print(" → backend/data/.env.local 에 채우거나 환경변수로 설정 후 다시 실행하세요.")
+        print("   발급: KAMIS https://www.kamis.or.kr · 기상청 https://www.data.go.kr")
+        print(" 키가 부족해 dataset.json은 변경하지 않습니다(기존 보정 데이터 유지).")
         print("=" * 64)
         sys.exit(2)
 
