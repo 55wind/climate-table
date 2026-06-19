@@ -84,7 +84,7 @@ function buildSliders() {
   const c = $("sliders"); c.innerHTML = "";
   for (const sl of SLIDERS) {
     const wrap = document.createElement("div"); wrap.className = "slider";
-    wrap.innerHTML = `<div class="lab"><span>${sl.label} <small style="color:#6b7888">${sl.hint}</small></span><b id="v_${sl.key}"></b></div>
+    wrap.innerHTML = `<div class="lab"><span>${sl.label} <small style="color:#86868b">${sl.hint}</small></span><b id="v_${sl.key}"></b></div>
       <input type="range" id="s_${sl.key}" min="${sl.min}" max="${sl.max}" step="1" aria-label="${sl.label} (${sl.hint})">`;
     c.appendChild(wrap);
     const input = wrap.querySelector("input");
@@ -166,7 +166,7 @@ function renderResult(res) {
   $("drivers").textContent = res.explain.drivers;
   $("note").textContent = res.explain.note;
   const rel = res.reliability || { label: "-", reason: "" };
-  $("r2box").innerHTML = `기상 설명력 <b>R² = ${res.r2}</b> · 신뢰도 <b>${rel.label}</b><br><span style="color:#6b7888">${rel.reason}</span>`;
+  $("r2box").innerHTML = `기상 설명력 <b>R² = ${res.r2}</b> · 신뢰도 <b>${rel.label}</b><br><span style="color:#86868b">${rel.reason}</span>`;
   const ul = $("adapt"); ul.innerHTML = "";
   for (const a of res.adapt) { const li = document.createElement("li"); li.textContent = a; ul.appendChild(li); }
   // 상태 가시성: 결과 갱신을 잠깐 강조
@@ -207,16 +207,16 @@ function drawChart() {
   ctx.font = "10px Pretendard"; ctx.textBaseline = "middle";
   for (let k = 0; k <= 4; k++) {
     const v = lo + (hi - lo) * k / 4, y = Y(v);
-    ctx.strokeStyle = "rgba(0,0,0,0.07)"; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
-    ctx.fillStyle = "#6f6a5e"; ctx.textAlign = "right"; ctx.fillText(Math.round(v).toLocaleString(), pad.l - 6, y);
+    ctx.strokeStyle = "rgba(0,0,0,0.06)"; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = "#86868b"; ctx.textAlign = "right"; ctx.fillText(Math.round(v).toLocaleString(), pad.l - 6, y);
   }
   // x 연도
   ctx.textAlign = "center";
   data.forEach((d, i) => {
     if (d.month === 1) {
       const x = X(i);
-      ctx.fillStyle = "#6f6a5e"; ctx.fillText(d.date.slice(0, 4), x, h - 8);
-      ctx.strokeStyle = "rgba(0,0,0,0.05)"; ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke();
+      ctx.fillStyle = "#86868b"; ctx.fillText(d.date.slice(0, 4), x, h - 8);
+      ctx.strokeStyle = "rgba(0,0,0,0.04)"; ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke();
     }
   });
   // 기상 사건 표시
@@ -225,23 +225,23 @@ function drawChart() {
     const idx = data.findIndex(d => d.date === ev.date);
     if (idx < 0) continue;
     const x = X(idx);
-    ctx.strokeStyle = "rgba(154,148,138,0.55)"; ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#6f6a5e"; ctx.font = "9px Pretendard";
+    ctx.fillStyle = "#86868b"; ctx.font = "9px Pretendard";
     ctx.save(); ctx.translate(x, pad.t + 2); ctx.fillText("▼", 0, 0); ctx.restore();
   }
   // 평년선
-  ctx.strokeStyle = "rgba(116,111,100,0.5)"; ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = "rgba(0,0,0,0.22)"; ctx.setLineDash([5, 4]);
   ctx.beginPath(); ctx.moveTo(pad.l, Y(state.normal)); ctx.lineTo(w - pad.r, Y(state.normal)); ctx.stroke(); ctx.setLineDash([]);
   // 가격선
-  ctx.strokeStyle = "#16140f"; ctx.lineWidth = 1.8; ctx.beginPath();
+  ctx.strokeStyle = "#1d1d1f"; ctx.lineWidth = 1.8; ctx.beginPath();
   data.forEach((d, i) => { const x = X(i), y = Y(d.price); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
   ctx.stroke();
   // 현재 예측선
   if (lastPred != null) {
-    ctx.strokeStyle = "#a8321e"; ctx.lineWidth = 1.6; ctx.setLineDash([6, 3]);
+    ctx.strokeStyle = "#0066cc"; ctx.lineWidth = 1.6; ctx.setLineDash([6, 3]);
     ctx.beginPath(); ctx.moveTo(pad.l, Y(lastPred)); ctx.lineTo(w - pad.r, Y(lastPred)); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#a8321e"; ctx.textAlign = "left"; ctx.font = "700 10px Pretendard";
+    ctx.fillStyle = "#0066cc"; ctx.textAlign = "left"; ctx.font = "700 10px Pretendard";
     ctx.fillText("예측 " + lastPred.toLocaleString() + "원", pad.l + 4, Y(lastPred) - 6);
   }
 }
