@@ -68,8 +68,8 @@ QUIZ = [
      "fb": "비축물량 방출, 할인 지원, (필요 시) 수입 확대 등으로 단기 수급을 안정시킵니다."},
 ]
 
-# 평년(보통) 기상 — 시나리오의 '날씨 효과'를 분리하기 위한 같은-시기 비교 기준
-BASELINE = {"heat_days": 6, "cold_days": 2, "heavy_rain_days": 2, "drought_idx": 20, "frost": 0}
+# 평년(보통) 기상 — '극단기상 없음' 기준. 날씨 효과·요인을 깔끔히 분리.
+BASELINE = {"heat_days": 0, "cold_days": 0, "heavy_rain_days": 0, "drought_idx": 20, "frost": 0}
 
 CONTENT = {".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8",
            ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
@@ -170,7 +170,9 @@ class Handler(BaseHTTPRequestHandler):
             normal = MODEL.normals[crop]
             # 같은 시기 평년 기상 기준 → 날씨 효과만 분리
             ref = MODEL.predict(crop, dict(BASELINE), month=month)
-            contribs = MODEL.contributions(crop, scen, month=month)
+            # 기여도는 '평년 기상 대비 차이'로 계산 → 헤드라인(평년比 %)과 일치
+            delta = {k: float(scen.get(k, 0)) - float(BASELINE.get(k, 0)) for k in FEATURES if k != "sun_dev"}
+            contribs = MODEL.contributions(crop, delta, month=month)
             return self._json({
                 "item": crop, "predicted": pred, "normal": normal,
                 "baseline": ref,

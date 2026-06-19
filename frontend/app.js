@@ -6,7 +6,7 @@ const API = ""; // 동일 출처(백엔드가 정적 서빙)
 
 const state = {
   item: "배추",
-  scenario: { heat_days: 6, heavy_rain_days: 2, drought_idx: 20, cold_days: 0, frost: 0, month: 8 },
+  scenario: { heat_days: 0, heavy_rain_days: 0, drought_idx: 20, cold_days: 0, frost: 0, month: 8 },
   items: [], normals: {}, events: [], series: [], normal: 0, r2: 0,
 };
 
@@ -31,7 +31,7 @@ const PRESETS = [
   { name: "2020 역대 최장 장마", s: { heat_days: 4, heavy_rain_days: 9, drought_idx: 0, cold_days: 0, frost: 0, month: 7 } },
   { name: "2023 봄 개화기 냉해 (금사과)", s: { heat_days: 0, heavy_rain_days: 1, drought_idx: 10, cold_days: 0, frost: 70, month: 4 } },
   { name: "한겨울 한파", s: { heat_days: 0, heavy_rain_days: 0, drought_idx: 20, cold_days: 20, frost: 0, month: 1 } },
-  { name: "평년 (기준)", s: { heat_days: 6, heavy_rain_days: 2, drought_idx: 20, cold_days: 0, frost: 0, month: 8 } },
+  { name: "평년 (기준)", s: { heat_days: 0, heavy_rain_days: 0, drought_idx: 20, cold_days: 0, frost: 0, month: 8 } },
 ];
 
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; setTimeout(() => t.hidden = true, 3000); }
