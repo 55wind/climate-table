@@ -27,6 +27,16 @@ small{font-size:.6em;color:var(--dim);margin-left:3px}
 .hero{max-width:1180px;margin:18px auto 4px;padding:0 24px}
 .hero p{font-size:14.5px;color:var(--dim);background:var(--card);border:1px solid var(--line);border-left:4px solid var(--hot);border-radius:10px;padding:14px 18px}
 .hero b{color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.fact{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:11px;padding:13px 15px;display:flex;flex-direction:column;gap:6px}
+.fact-num{font-size:24px;font-weight:800;color:var(--accent);line-height:1}
+.fact-num small{font-size:13px;font-weight:700;color:var(--accent)}
+.fact-txt{font-size:12.5px;color:var(--ink);line-height:1.45}
+.fact-txt b{color:var(--accent2)}
+.fact-src{font-size:10.5px;color:var(--dim);margin-top:auto}
+a.fact-src{text-decoration:underline;text-underline-offset:2px}
+a.fact-src:hover{color:var(--accent2)}
+@media (max-width:760px){.facts{grid-template-columns:1fr}}
 
 .grid{max-width:1180px;margin:16px auto;padding:0 24px;display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
