@@ -46,8 +46,8 @@ async function api(path, opts) {
 async function init() {
   try {
     const h = await api("/api/health");
-    const src = h.source ? " · " + h.source : "";
-    $("health").textContent = "● 백엔드 연결됨 (" + h.crops.length + "작물 · " + h.months + "개월" + src + ")";
+    $("health").textContent = "● 연결됨 · " + h.crops.length + "작물 " + h.months + "개월";
+    $("health").title = "데이터 출처: " + (h.source || "보정 데이터");
     $("health").className = "health ok";
   } catch (e) {
     $("health").textContent = "● 백엔드 미연결 (python backend/app.py 실행 필요)";
@@ -59,7 +59,7 @@ async function init() {
   state.items = items.items; state.normals = items.normals; state.events = items.events;
   buildCrops(); buildSliders(); buildPresets();
   await selectCrop(state.item);
-  bindQuiz();
+  setupTabs(); setupQuiz();
   // 온보딩 배너: 1회 노출(이전에 닫았으면 숨김)
   const ob = $("onboard");
   if (ob) {
@@ -246,41 +246,105 @@ function drawChart() {
   }
 }
 
-/* ---------- 퀴즈 ---------- */
-let QUIZ = [], qi = 0, qscore = 0, qansd = false;
-async function bindQuiz() {
-  $("quizBtn").onclick = async () => {
-    if (!QUIZ.length) { try { QUIZ = (await api("/api/quiz")).quiz; } catch (e) { toast("퀴즈 로드 실패"); return; } }
-    qi = 0; qscore = 0; $("quizModal").hidden = false; renderQuiz();
+/* ---------- 탭 전환 ---------- */
+let goSim = null;
+function setupTabs() {
+  const sim = $("viewSim"), quiz = $("viewQuiz"), tSim = $("tabSim"), tQuiz = $("tabQuiz");
+  const show = which => {
+    const isQuiz = which === "quiz";
+    sim.hidden = isQuiz; quiz.hidden = !isQuiz;
+    tQuiz.classList.toggle("active", isQuiz); tSim.classList.toggle("active", !isQuiz);
+    tQuiz.setAttribute("aria-selected", String(isQuiz)); tSim.setAttribute("aria-selected", String(!isQuiz));
+    window.scrollTo(0, 0);
   };
-  $("quizClose").onclick = () => $("quizModal").hidden = true;
-  $("quizNext").onclick = () => {
-    if (qi < QUIZ.length - 1) { qi++; renderQuiz(); }
-    else {
-      $("quizQ").textContent = `🎉 완료! ${QUIZ.length}문제 중 ${qscore}개 정답`;
-      $("quizOpts").innerHTML = ""; $("quizFb").textContent = qscore === QUIZ.length ? "완벽합니다! 기후플레이션을 정확히 이해했어요." : "시나리오를 더 조작하며 원리를 체험해 보세요.";
-      $("quizNext").style.visibility = "hidden";
-    }
-  };
+  tSim.onclick = () => show("sim");
+  tQuiz.onclick = () => show("quiz");
+  goSim = () => show("sim");
 }
-function renderQuiz() {
-  qansd = false; const item = QUIZ[qi];
-  $("quizQ").textContent = `Q${qi + 1}. ${item.q}`;
-  $("quizFb").textContent = ""; $("quizScore").textContent = `점수 ${qscore} / ${QUIZ.length}`;
-  $("quizNext").style.visibility = "hidden"; $("quizNext").textContent = qi < QUIZ.length - 1 ? "다음" : "결과 보기";
-  const box = $("quizOpts"); box.innerHTML = "";
+
+/* ---------- 학습 퀴즈 (탭·진행률·영역별 채점·예측 챌린지) ---------- */
+const CHALLENGE = {
+  type: "challenge", cat: "예측", item: "배추",
+  scenario: { heat_days: 28, drought_idx: 78, heavy_rain_days: 3, cold_days: 0, frost: 0, month: 9 },
+  q: "예측 챌린지 — 2024년 여름 폭염 시나리오(폭염 28일·가뭄 78)에서 배추 도매가는 같은 시기 평년 대비 얼마나 오를까요?",
+  o: ["거의 변화 없음 (±5%)", "+10~20% 안팎", "+40% 이상"], a: 2,
+  fb: "폭염·가뭄이 고랭지 배추 작황을 무너뜨려 큰 폭으로 오릅니다."
+};
+let QUIZ = [], qi = 0, qscore = 0, qansd = false, catStats = {};
+
+function setupQuiz() {
+  $("qBegin").onclick = startQuiz;
+  $("qNext").onclick = nextQuiz;
+}
+async function startQuiz() {
+  if (QUIZ.length === 0) {
+    let base;
+    try { base = (await api("/api/quiz")).quiz; } catch (e) { toast("퀴즈를 불러오지 못했습니다"); return; }
+    QUIZ = base.concat([CHALLENGE]);
+  }
+  qi = 0; qscore = 0; catStats = {};
+  $("qStart").hidden = true; $("qResult").hidden = true; $("qStage").hidden = false;
+  renderQ();
+}
+function renderQ() {
+  qansd = false;
+  const item = QUIZ[qi], n = QUIZ.length;
+  $("qBar").style.width = (qi / n * 100) + "%";
+  $("qCount").textContent = `${qi + 1} / ${n}`;
+  $("qScore").textContent = `정답 ${qscore}개`;
+  $("qCat").textContent = item.cat || "개념";
+  $("qQ").textContent = item.q;
+  $("qFb").textContent = ""; $("qFb").className = "qfb";
+  $("qNext").style.visibility = "hidden";
+  $("qNext").textContent = qi < n - 1 ? "다음 문항" : "결과 보기";
+  const box = $("qOpts"); box.innerHTML = "";
   item.o.forEach((opt, i) => {
-    const b = document.createElement("button"); b.textContent = opt;
-    b.onclick = () => {
-      if (qansd) return; qansd = true;
-      const ok = i === item.a;
-      if (ok) { b.classList.add("correct"); qscore++; } else { b.classList.add("wrong"); box.children[item.a].classList.add("correct"); }
-      $("quizFb").textContent = (ok ? "✅ 정답! " : "❌ ") + item.fb;
-      $("quizScore").textContent = `점수 ${qscore} / ${QUIZ.length}`;
-      $("quizNext").style.visibility = "visible";
-    };
+    const b = document.createElement("button"); b.type = "button"; b.textContent = opt;
+    b.onclick = () => answer(item, i, b, box);
     box.appendChild(b);
   });
+  if (item.type === "challenge") fetchChallenge(item);
+}
+async function fetchChallenge(item) {
+  try {
+    item._real = await api("/api/simulate", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ item: item.item }, item.scenario)) });
+  } catch (e) { /* 기본 해설 사용 */ }
+}
+function answer(item, i, btn, box) {
+  if (qansd) return; qansd = true;
+  const ok = i === item.a, cat = item.cat || "개념";
+  catStats[cat] = catStats[cat] || { c: 0, t: 0 }; catStats[cat].t++;
+  if (ok) { btn.classList.add("correct"); qscore++; catStats[cat].c++; }
+  else { btn.classList.add("wrong"); box.children[item.a].classList.add("correct"); }
+  let fb = (ok ? "정답입니다. " : "아쉬워요. ") + item.fb;
+  if (item.type === "challenge" && item._real) fb += ` 모델 예측: 평년 대비 +${item._real.explain.pct}% (${item._real.predicted.toLocaleString()}원/kg).`;
+  $("qFb").textContent = fb; $("qFb").className = "qfb " + (ok ? "ok" : "no");
+  $("qScore").textContent = `정답 ${qscore}개`;
+  $("qBar").style.width = ((qi + 1) / QUIZ.length * 100) + "%";
+  $("qNext").style.visibility = "visible";
+}
+function nextQuiz() { if (qi < QUIZ.length - 1) { qi++; renderQ(); } else showResult(); }
+function showResult() {
+  $("qStage").hidden = true;
+  const n = QUIZ.length, pct = Math.round(qscore / n * 100);
+  let grade, msg;
+  if (pct >= 90) { grade = "기후 식탁 마스터"; msg = "완벽에 가깝습니다. 기후플레이션을 정확히 이해했어요."; }
+  else if (pct >= 70) { grade = "우수"; msg = "잘하셨어요. 약한 영역만 복습하면 완벽합니다."; }
+  else if (pct >= 50) { grade = "보통"; msg = "기본기는 갖췄어요. 시뮬레이터로 사례를 더 체험해 보세요."; }
+  else { grade = "복습 필요"; msg = "시뮬레이터에서 폭염·냉해 시나리오를 직접 돌려보며 원리를 익혀 보세요."; }
+  const cats = Object.keys(catStats).map(k =>
+    `<div class="qres-cat"><span>${k}</span><b>${catStats[k].c}/${catStats[k].t}</b></div>`).join("");
+  $("qResult").innerHTML =
+    `<span class="qkicker">결과</span>
+     <div class="qres-score"><span class="qres-num">${qscore}<small>/${n}</small></span><span class="qres-grade">${grade}</span></div>
+     <div class="qres-bar"><div style="width:${pct}%"></div></div>
+     <p class="qres-msg">${msg}</p>
+     <div class="qres-cats">${cats}</div>
+     <div class="qres-actions"><button id="qRetry" class="primary" type="button">다시 풀기</button><button id="qGoSim" class="ghost" type="button">시뮬레이터에서 확인</button></div>`;
+  $("qResult").hidden = false;
+  $("qRetry").onclick = startQuiz;
+  $("qGoSim").onclick = () => goSim && goSim();
 }
 
 init();

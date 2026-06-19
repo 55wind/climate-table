@@ -26,14 +26,18 @@
   </div>
   <div class="topbar-right">
     <span id="health" class="health">● 연결 확인 중</span>
-    <button id="quizBtn" class="btn-quiz">학습 퀴즈</button>
   </div>
 </header>
 
+<nav class="tabs" role="tablist" aria-label="화면 전환">
+  <button id="tabSim" class="tab active" role="tab" aria-selected="true" type="button">시뮬레이션</button>
+  <button id="tabQuiz" class="tab" role="tab" aria-selected="false" type="button">학습 퀴즈</button>
+</nav>
+
+<div id="viewSim">
 <section class="hero">
-  <p>“배추 한 포기 2만원, 금사과 한 알 5천원.” 이상기후는 더 이상 먼 이야기가 아니라 <b>밥상 물가</b>입니다.
-  폭염·가뭄·호우·냉해 시나리오를 직접 조절해, 기후가 농산물 가격을 어떻게 움직이는지 데이터로 확인하세요.</p>
-  <p class="lead">기온이 1℃ 오르면 식품물가는 연 최대 +3.2%p 오르고, 농산물은 모든 품목 중 기후 충격에 가장 민감하다. 2024년 폭염엔 배추 한 포기가 최고 2만 원까지 치솟았다.</p>
+  <p class="lead">기후가 바뀌면,<br>우리 밥상 물가도 바뀝니다.</p>
+  <p class="herosub">기온이 1℃ 오르면 식품물가는 연 최대 +3.2%p, 농산물은 모든 품목 중 기후 충격에 가장 민감합니다. 폭염·가뭄·호우·냉해 시나리오를 직접 조절해 그 변화를 데이터로 확인하세요.</p>
   <p class="refs">자료 ·
     <a href="https://www.nature.com/articles/s43247-023-01173-x" target="_blank" rel="noopener">포츠담기후영향연구소·ECB (Kotz et al., 2024)</a> ·
     한국은행 「기후변화가 국내 인플레이션에 미치는 영향」 ·
@@ -99,21 +103,36 @@
     </div>
   </section>
 </main>
+</div><!-- /viewSim -->
+
+<section id="viewQuiz" class="quizpage" hidden>
+  <div class="quizwrap">
+    <div id="qStart" class="card qintro">
+      <span class="qkicker">학습 퀴즈</span>
+      <h2>오늘의 기후 식탁 퀴즈</h2>
+      <p class="qsub">개념 · 실제 사례 · 대응 3개 영역 문항과, 모델로 답을 확인하는 <b>예측 챌린지</b>까지. 각 문항마다 해설이 제공됩니다.</p>
+      <button id="qBegin" class="primary" type="button">퀴즈 시작</button>
+    </div>
+
+    <div id="qStage" class="qstage" hidden>
+      <div class="qprogress"><div id="qBar" class="qbar"></div></div>
+      <div class="qmeta"><span id="qCount">1 / 10</span><span id="qScore">정답 0개</span></div>
+      <div class="card qcard">
+        <span class="qcat" id="qCat">개념</span>
+        <h3 class="qq" id="qQ">문제</h3>
+        <div class="quiz-opts" id="qOpts"></div>
+        <p class="qfb" id="qFb"></p>
+      </div>
+      <div class="qnav"><button id="qNext" class="primary" type="button">다음</button></div>
+    </div>
+
+    <div id="qResult" class="card qresult" hidden></div>
+  </div>
+</section>
 
 <footer class="foot">
   <p>기상·기후 AI 해커톤 출품작 · 기후플레이션 교육 도구 · 프론트엔드(Canvas) + 백엔드(Python REST·회귀모델)</p>
 </footer>
-
-<!-- 퀴즈 모달 -->
-<div id="quizModal" class="modal" hidden>
-  <div class="modal-box">
-    <button class="modal-close" id="quizClose">✕</button>
-    <h2 id="quizQ">문제</h2>
-    <div id="quizOpts" class="quiz-opts"></div>
-    <p id="quizFb" class="quiz-fb"></p>
-    <div class="quiz-foot"><span id="quizScore"></span><button id="quizNext" class="primary">다음</button></div>
-  </div>
-</div>
 
 <div id="toast" class="toast" hidden></div>
 
