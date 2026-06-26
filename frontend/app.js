@@ -209,6 +209,13 @@ function updateWeatherBadge() {
   b.textContent = "현재 날씨 · " + (on.length ? on.join("·") : "평년 수준") + ` (${s.month}월)`;
 }
 
+// 받침 유무로 주격조사 이/가 선택
+function gaParticle(w) {
+  if (!w) return "가";
+  const c = w.charCodeAt(w.length - 1);
+  const hasBatchim = c >= 0xAC00 && c <= 0xD7A3 && ((c - 0xAC00) % 28) !== 0;
+  return hasBatchim ? "이" : "가";
+}
 function renderMeal(res) {
   updateWeatherBadge();
   const box = $("mealResult"); if (!box) return;
@@ -220,7 +227,7 @@ function renderMeal(res) {
   const pctTxt = (t.pct > 0 ? "+" : "") + t.pct + "%";
   const top = res.ingredientTotals[0];
   const insight = top && t.pct > 0
-    ? `이 날씨에서 <b>${top.crop}</b>이(가) 평년比 <b>+${top.pct}%</b>로 밥상값을 가장 많이 끌어올렸습니다.`
+    ? `이 날씨에서 <b>${top.crop}</b>${gaParticle(top.crop)} 평년比 <b>+${top.pct}%</b>로 밥상값을 가장 많이 끌어올렸습니다.`
     : (t.pct > 0 ? "기상 영향으로 밥상값이 소폭 올랐습니다." : "평년 날씨와 비슷한 수준입니다.");
   const dishRows = res.dishes.map(d =>
     `<div class="dish-row"><span class="dr-name">${d.name}<span class="dr-pct">${d.pct > 0 ? "+" + d.pct + "%" : ""}</span></span>
