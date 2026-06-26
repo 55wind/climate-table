@@ -8,6 +8,7 @@ const state = {
   item: "배추",
   scenario: { heat_days: 0, heavy_rain_days: 0, drought_idx: 20, cold_days: 0, frost: 0, month: 8 },
   items: [], normals: {}, events: [], series: [], normal: 0, r2: 0,
+  dishes: [], meal: [], mealUid: 0,
 };
 
 const SLIDERS = [
@@ -80,6 +81,8 @@ async function init() {
   buildCrops(); buildSliders(); buildPresets();
   await selectCrop(state.item);
   setupTabs(); setupQuiz();
+  await loadDishes(); buildTray(); buildMealPresets(); setupMealTable();
+  renderMeal(null); updateWeatherBadge();
   // 온보딩 배너: 1회 노출(이전에 닫았으면 숨김)
   const ob = $("onboard");
   if (ob) {
@@ -87,6 +90,165 @@ async function init() {
     $("onboardClose").onclick = () => { ob.style.display = "none"; try { localStorage.setItem("ct_onboard_done", "1"); } catch (e) {} };
   }
   window.addEventListener("resize", () => { drawChart(); drawMap(lastPct); });
+}
+
+/* ---------- 밥상 차리기 ---------- */
+async function loadDishes() {
+  try {
+    const r = await api("/api/dishes");
+    state.dishes = r.dishes || [];
+  } catch (e) { state.dishes = []; }
+}
+function dishById(id) { return state.dishes.find(d => d.id === id); }
+
+function foodMedia(dish, cls) {
+  // 이미지 우선, 실패 시 이모지 폴백
+  return `<img class="food-img" src="/assets/foods/${dish.img}" alt="${dish.name}"
+    onerror="this.outerHTML='<span class=\\'food-emoji\\'>${dish.emoji}</span>'">`;
+}
+
+function buildTray() {
+  const tray = $("mealTray"); if (!tray) return;
+  tray.innerHTML = "";
+  for (const d of state.dishes) {
+    const card = document.createElement("div");
+    card.className = "tray-card";
+    card.draggable = true;
+    card.dataset.id = d.id;
+    card.innerHTML = `${foodMedia(d)}<div class="food-name">${d.name}</div>`;
+    card.addEventListener("dragstart", e => e.dataTransfer.setData("text/plain", d.id));
+    card.addEventListener("click", () => addPlate(d.id)); // 모바일/탭 폴백
+    tray.appendChild(card);
+  }
+}
+
+function buildMealPresets() {
+  const box = $("mealPresets"); if (!box) return;
+  box.innerHTML = "";
+  PRESETS.forEach((p, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = p.name;
+    b.onclick = () => {
+      applyScenario(p.s);           // 기존 시뮬과 동일하게 시나리오 공유·갱신
+      Array.from(box.children).forEach((x, j) => x.classList.toggle("active", j === i));
+      refreshMeal();
+    };
+    box.appendChild(b);
+  });
+}
+
+function setupMealTable() {
+  const table = $("mealTable"); if (!table) return;
+  table.addEventListener("dragover", e => { e.preventDefault(); table.classList.add("drag-over"); });
+  table.addEventListener("dragleave", () => table.classList.remove("drag-over"));
+  table.addEventListener("drop", e => {
+    e.preventDefault(); table.classList.remove("drag-over");
+    const id = e.dataTransfer.getData("text/plain"); if (!id) return;
+    const rect = table.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    addPlate(id, x, y);
+  });
+  const clear = $("mealClear");
+  if (clear) clear.onclick = () => { state.meal = []; renderPlates(); simulateMeal(); };
+}
+
+function addPlate(id, x, y) {
+  const d = dishById(id); if (!d) return;
+  // 좌표 미지정(탭 추가) 시 가운데 부근에 분산 배치
+  if (x == null) { x = 30 + (state.meal.length * 17) % 45; y = 38 + (state.meal.length * 13) % 30; }
+  x = Math.max(10, Math.min(90, x)); y = Math.max(14, Math.min(86, y));
+  state.meal.push({ uid: ++state.mealUid, id, x, y });
+  renderPlates(); simulateMeal();
+}
+function removePlate(uid) {
+  state.meal = state.meal.filter(p => p.uid !== uid);
+  renderPlates(); simulateMeal();
+}
+function renderPlates() {
+  const wrap = $("mealPlates"); if (!wrap) return;
+  wrap.innerHTML = "";
+  for (const p of state.meal) {
+    const d = dishById(p.id); if (!d) continue;
+    const el = document.createElement("div");
+    el.className = "plate";
+    el.style.left = p.x + "%"; el.style.top = p.y + "%";
+    el.innerHTML = `${foodMedia(d)}<div class="plate-name">${d.name}</div>`;
+    el.title = d.name + " (클릭 시 제거)";
+    el.onclick = () => removePlate(p.uid);
+    wrap.appendChild(el);
+  }
+  const hint = $("mealHint"); if (hint) hint.style.display = state.meal.length ? "none" : "";
+}
+
+let mealTimer = null;
+function simulateMeal() {
+  clearTimeout(mealTimer);
+  mealTimer = setTimeout(doSimulateMeal, 110);
+}
+async function doSimulateMeal() {
+  const ids = state.meal.map(p => p.id);
+  let res;
+  try {
+    res = await api("/api/meal", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario: state.scenario, month: state.scenario.month, dishes: ids }),
+    });
+  } catch (e) { toast("밥상 계산 실패"); return; }
+  renderMeal(res);
+}
+
+function updateWeatherBadge() {
+  const b = $("mealWeatherBadge"); if (!b) return;
+  const s = state.scenario;
+  const on = [];
+  if (s.heat_days >= 10) on.push("폭염");
+  if (s.drought_idx >= 50) on.push("가뭄");
+  if (s.heavy_rain_days >= 6) on.push("호우");
+  if (s.cold_days >= 10) on.push("한파");
+  if (s.frost >= 40) on.push("냉해");
+  b.textContent = "현재 날씨 · " + (on.length ? on.join("·") : "평년 수준") + ` (${s.month}월)`;
+}
+
+function renderMeal(res) {
+  updateWeatherBadge();
+  const box = $("mealResult"); if (!box) return;
+  if (!res || !res.dishes || !res.dishes.length) {
+    box.innerHTML = `<p class="meal-empty">식탁이 비었습니다. 위 음식을 끌어다 올려 보세요.</p>`;
+    return;
+  }
+  const t = res.total;
+  const pctTxt = (t.pct > 0 ? "+" : "") + t.pct + "%";
+  const top = res.ingredientTotals[0];
+  const insight = top && t.pct > 0
+    ? `이 날씨에서 <b>${top.crop}</b>이(가) 평년比 <b>+${top.pct}%</b>로 밥상값을 가장 많이 끌어올렸습니다.`
+    : (t.pct > 0 ? "기상 영향으로 밥상값이 소폭 올랐습니다." : "평년 날씨와 비슷한 수준입니다.");
+  const dishRows = res.dishes.map(d =>
+    `<div class="dish-row"><span class="dr-name">${d.name}<span class="dr-pct">${d.pct > 0 ? "+" + d.pct + "%" : ""}</span></span>
+       <span class="dr-price">${d.predicted.toLocaleString()}원</span></div>`).join("");
+  const maxDelta = Math.max(1, ...res.ingredientTotals.map(i => i.predicted - i.baseline));
+  const ingBars = res.ingredientTotals.map(i => {
+    const delta = i.predicted - i.baseline;
+    const w = Math.max(3, delta / maxDelta * 100);
+    return `<div class="ing-bar"><div class="ib-top"><span>${i.crop} <small style="color:#86868b">${i.usedIn.join("·")}</small></span>
+        <b>${i.pct > 0 ? "+" : ""}${i.pct}% · ${i.predicted.toLocaleString()}원</b></div>
+        <div class="ib-track"><div class="ib-fill" style="width:${w}%"></div></div></div>`;
+  }).join("");
+  box.innerHTML = `
+    <div class="meal-total">
+      <div><span class="mt-label">밥상 총액</span>
+        <div class="mt-num">${t.predicted.toLocaleString()}<small>원</small></div></div>
+      <div class="mt-pct ${t.pct >= 0 ? "up" : "down"}">${pctTxt}</div>
+    </div>
+    <p class="meal-insight">${insight} 평년 밥상은 약 ${t.baseline.toLocaleString()}원입니다.</p>
+    <div class="meal-section-label">음식별</div>
+    <div class="dish-list">${dishRows}</div>
+    <div class="meal-section-label">원자재(기후 작물) 가격 영향</div>
+    <div class="ing-bars">${ingBars || '<p class="meal-empty">기후 작물 재료가 없습니다.</p>'}</div>`;
+}
+
+function refreshMeal() {
+  updateWeatherBadge();
+  if (state.meal.length) simulateMeal();
 }
 
 function buildCrops() {
@@ -168,6 +330,7 @@ async function doSimulate() {
   renderResult(res);
   drawChart();
   drawMap(lastPct);
+  refreshMeal();
 }
 
 function renderResult(res) {
@@ -337,16 +500,21 @@ function drawMap(pct) {
 /* ---------- 탭 전환 ---------- */
 let goSim = null;
 function setupTabs() {
-  const sim = $("viewSim"), quiz = $("viewQuiz"), tSim = $("tabSim"), tQuiz = $("tabQuiz");
+  const views = { sim: $("viewSim"), meal: $("viewMeal"), quiz: $("viewQuiz") };
+  const tabs = { sim: $("tabSim"), meal: $("tabMeal"), quiz: $("tabQuiz") };
   const show = which => {
-    const isQuiz = which === "quiz";
-    sim.hidden = isQuiz; quiz.hidden = !isQuiz;
-    tQuiz.classList.toggle("active", isQuiz); tSim.classList.toggle("active", !isQuiz);
-    tQuiz.setAttribute("aria-selected", String(isQuiz)); tSim.setAttribute("aria-selected", String(!isQuiz));
+    for (const k of Object.keys(views)) {
+      if (views[k]) views[k].hidden = k !== which;
+      if (tabs[k]) {
+        tabs[k].classList.toggle("active", k === which);
+        tabs[k].setAttribute("aria-selected", String(k === which));
+      }
+    }
     window.scrollTo(0, 0);
   };
-  tSim.onclick = () => show("sim");
-  tQuiz.onclick = () => { show("quiz"); ensureQuiz(); };
+  tabs.sim.onclick = () => show("sim");
+  tabs.meal.onclick = () => { show("meal"); refreshMeal(); };
+  tabs.quiz.onclick = () => { show("quiz"); ensureQuiz(); };
   goSim = () => show("sim");
 }
 
