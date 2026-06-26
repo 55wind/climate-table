@@ -32,6 +32,7 @@
 
 <nav class="tabs" role="tablist" aria-label="화면 전환">
   <button id="tabSim" class="tab active" role="tab" aria-selected="true" type="button">시뮬레이션</button>
+  <button id="tabMeal" class="tab" role="tab" aria-selected="false" type="button">밥상 차리기</button>
   <button id="tabQuiz" class="tab" role="tab" aria-selected="false" type="button">학습 퀴즈</button>
 </nav>
 
@@ -111,6 +112,31 @@
   </section>
 </main>
 </div><!-- /viewSim -->
+
+<section id="viewMeal" class="mealpage" hidden>
+  <div class="mealwrap">
+    <div class="meal-head">
+      <div>
+        <h2 class="meal-title">오늘의 밥상, 이 날씨엔 얼마일까?</h2>
+        <p class="meal-sub">음식을 식탁에 올리면 재료(원자재)별 물가상승률과 총액을 계산합니다. 날씨는 시뮬레이션 탭과 공유됩니다.</p>
+      </div>
+      <span id="mealWeatherBadge" class="mw-badge">현재 날씨 —</span>
+    </div>
+    <div id="mealPresets" class="meal-presets"></div>
+
+    <div id="mealTray" class="meal-tray" aria-label="음식 트레이"></div>
+
+    <div id="mealTable" class="meal-table">
+      <div id="mealPlates" class="meal-plates"></div>
+      <p class="meal-hint" id="mealHint">음식을 식탁 위로 끌어다 놓아 보세요 (모바일은 탭)</p>
+    </div>
+    <div class="meal-tablebar">
+      <button id="mealClear" class="mini" type="button">식탁 비우기</button>
+    </div>
+
+    <div class="card meal-result" id="mealResult" aria-live="polite"></div>
+  </div>
+</section>
 
 <section id="viewQuiz" class="quizpage" hidden>
   <div class="quizwrap">
