@@ -9,6 +9,10 @@ from http.server import ThreadingHTTPServer
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 
+# Windows cp949 터미널에서도 유니코드 출력이 깨지지 않도록
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import app  # noqa: E402
 
@@ -100,6 +104,27 @@ def run_checks():
     # 빈 시나리오(0) — 평년 근처, 에러 없어야
     s, d = post("/api/simulate", {"item": "쌀"})
     check("simulate 빈 시나리오 정상", s == 200 and d["predicted"] > 0)
+
+    # meal — 폭염 시나리오에서 밥상 총액 상승
+    hot = {"heat_days": 30, "drought_idx": 80, "heavy_rain_days": 4}
+    s, d = post("/api/meal", {"scenario": hot, "month": 8,
+                              "dishes": ["rice", "kimchi_jjigae", "baechu_kimchi"]})
+    check("meal 200", s == 200)
+    check("meal total>0", d["total"]["predicted"] > 0)
+    check("meal 폭염→총액 상승", d["total"]["predicted"] >= d["total"]["baseline"]
+          and d["total"]["pct"] > 0, f"pct={d['total']['pct']}")
+    check("meal 음식 3개", len(d["dishes"]) == 3)
+    check("meal 원자재 집계 존재", len(d["ingredientTotals"]) >= 1)
+    # meal — 빈 밥상
+    s, d = post("/api/meal", {"scenario": hot, "month": 8, "dishes": []})
+    check("meal 빈 밥상 0원", s == 200 and d["total"]["predicted"] == 0 and d["total"]["pct"] == 0)
+    # meal — 알 수 없는 음식은 스킵
+    s, d = post("/api/meal", {"scenario": hot, "month": 8, "dishes": ["rice", "없는음식"]})
+    check("meal 미지음식 스킵", s == 200 and len(d["dishes"]) == 1)
+    # meal — 평년 시나리오 → pct≈0
+    base = {"heat_days": 0, "cold_days": 0, "heavy_rain_days": 0, "drought_idx": 20, "frost": 0}
+    s, d = post("/api/meal", {"scenario": base, "month": 8, "dishes": ["kimchi_jjigae"]})
+    check("meal 평년 pct≈0", abs(d["total"]["pct"]) <= 1, f"pct={d['total']['pct']}")
 
 
 def main():

@@ -125,6 +125,59 @@ def explain(crop, pred, ref, contribs):
     return {"pct": pct, "headline": head, "drivers": body, "note": CLIMATE_NOTE.get(crop, "")}
 
 
+def _pct(pred, base):
+    return round((pred - base) / base * 100) if base else 0
+
+
+def compute_meal(scenario, month, dish_ids):
+    """음식 id 목록 → 음식별·재료별·총액(예측 vs 평년 기상)."""
+    crop_cache = {}
+
+    def crop_price(crop):
+        if crop not in crop_cache:
+            p = MODEL.predict(crop, scenario, month=month)
+            b = MODEL.predict(crop, dict(BASELINE), month=month)
+            crop_cache[crop] = (p, b)
+        return crop_cache[crop]
+
+    out_dishes, agg = [], {}
+    total_p = total_b = 0
+    for did in dish_ids:
+        d = dishes.by_id(did)
+        if not d:
+            continue  # 알 수 없는 음식은 건너뛴다
+        dp = db = 0
+        ings = []
+        for ing in d["ingredients"]:
+            if ing["kind"] == "crop":
+                pp, bb = crop_price(ing["crop"])
+                amt = float(ing.get("amount_kg", 0))
+                ip, ib = round(pp * amt), round(bb * amt)
+                a = agg.setdefault(ing["crop"], {"predicted": 0, "baseline": 0, "usedIn": []})
+                a["predicted"] += ip
+                a["baseline"] += ib
+                if d["name"] not in a["usedIn"]:
+                    a["usedIn"].append(d["name"])
+            else:
+                ip = ib = int(ing.get("won", 0))
+            dp += ip
+            db += ib
+            ings.append({"name": ing["name"], "kind": ing["kind"],
+                         "predicted": ip, "baseline": ib, "pct": _pct(ip, ib)})
+        out_dishes.append({"id": d["id"], "name": d["name"],
+                           "predicted": dp, "baseline": db, "pct": _pct(dp, db),
+                           "ingredients": ings})
+        total_p += dp
+        total_b += db
+
+    ing_totals = [{"crop": c, "predicted": v["predicted"], "baseline": v["baseline"],
+                   "pct": _pct(v["predicted"], v["baseline"]), "usedIn": v["usedIn"]}
+                  for c, v in agg.items()]
+    ing_totals.sort(key=lambda x: x["predicted"] - x["baseline"], reverse=True)
+    return {"total": {"predicted": total_p, "baseline": total_b, "pct": _pct(total_p, total_b)},
+            "dishes": out_dishes, "ingredientTotals": ing_totals}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass  # 조용히
@@ -189,11 +242,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
-        if u.path != "/api/simulate":
-            return self._err("not found", 404)
         try:
             n = int(self.headers.get("Content-Length", "0"))
             body = json.loads(self.rfile.read(n) or b"{}")
+        except Exception as e:  # noqa
+            return self._err(f"bad request: {e}", 400)
+        if u.path == "/api/simulate":
+            return self._simulate(body)
+        if u.path == "/api/meal":
+            return self._meal(body)
+        return self._err("not found", 404)
+
+    def _simulate(self, body):
+        try:
             crop = body.get("item")
             if crop not in MODEL.items:
                 return self._err("unknown item")
@@ -203,9 +264,7 @@ class Handler(BaseHTTPRequestHandler):
                 scen["sun_hr"] = float(body["sun_hr"])
             pred = MODEL.predict(crop, scen, month=month)
             normal = MODEL.normals[crop]
-            # 같은 시기 평년 기상 기준 → 날씨 효과만 분리
             ref = MODEL.predict(crop, dict(BASELINE), month=month)
-            # 기여도는 '평년 기상 대비 차이'로 계산 → 헤드라인(평년比 %)과 일치
             delta = {k: float(scen.get(k, 0)) - float(BASELINE.get(k, 0)) for k in FEATURES if k != "sun_dev"}
             contribs = MODEL.contributions(crop, delta, month=month)
             return self._json({
@@ -217,6 +276,18 @@ class Handler(BaseHTTPRequestHandler):
                 "explain": explain(crop, pred, ref, contribs),
                 "adapt": ADAPT.get(crop, []),
             })
+        except Exception as e:  # noqa
+            return self._err(f"bad request: {e}", 400)
+
+    def _meal(self, body):
+        try:
+            sc_in = body.get("scenario", {}) or {}
+            month = int(body.get("month", sc_in.get("month", 8)))
+            scen = {k: float(sc_in.get(k, 0)) for k in FEATURES if k != "sun_dev"}
+            if "sun_hr" in sc_in:
+                scen["sun_hr"] = float(sc_in["sun_hr"])
+            dish_ids = body.get("dishes", []) or []
+            return self._json(compute_meal(scen, month, dish_ids))
         except Exception as e:  # noqa
             return self._err(f"bad request: {e}", 400)
 
