@@ -192,17 +192,18 @@ a:hover{text-decoration:underline}
 .meal-presets button.active{box-shadow:inset 0 0 0 2px var(--primary-focus);border-color:transparent;font-weight:600}
 
 .meal-tray{display:flex;gap:10px;overflow-x:auto;padding:12px;background:var(--canvas);border:1px solid var(--hairline);border-radius:18px;margin-bottom:16px}
-.tray-card{flex:0 0 auto;width:92px;text-align:center;border:1px solid var(--hairline);border-radius:14px;padding:10px 6px;background:var(--canvas);cursor:grab;transition:transform .12s,border-color .12s;user-select:none}
+.tray-card{position:relative;flex:0 0 auto;width:92px;text-align:center;border:1px solid var(--hairline);border-radius:14px;padding:10px 6px;background:var(--canvas);cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;user-select:none}
 .tray-card:hover{border-color:var(--ink)}
-.tray-card:active{cursor:grabbing;transform:scale(.96)}
+.tray-card:active{transform:scale(.96)}
+.tray-card.on{box-shadow:inset 0 0 0 2px var(--primary-focus);border-color:transparent;background:#f3f8ff}
+.tray-card.on::after{content:"✓";position:absolute;top:6px;right:8px;font-size:12px;font-weight:700;color:var(--primary)}
 .tray-card .food-img{width:54px;height:54px;object-fit:contain;display:block;margin:0 auto 6px;pointer-events:none}
 .tray-card .food-emoji{font-size:42px;line-height:54px;display:block;margin-bottom:6px}
 .tray-card .food-name{font-size:12px;letter-spacing:-.2px;color:var(--ink)}
 
-.meal-table{position:relative;min-height:340px;border-radius:24px;
-  background:radial-gradient(ellipse 70% 60% at 50% 50%,#e8d4b0,#d8bd92);
-  border:3px solid #c4a574;overflow:hidden;transition:box-shadow .15s}
-.meal-table.drag-over{box-shadow:inset 0 0 0 3px var(--primary)}
+.meal-table{position:relative;min-height:360px;border-radius:24px;
+  background:radial-gradient(ellipse 72% 62% at 50% 52%,#ecdcbb,#d8bd92);
+  border:3px solid #c4a574;overflow:hidden}
 .meal-plates{position:absolute;inset:0}
 .plate{position:absolute;transform:translate(-50%,-50%);text-align:center;cursor:pointer;transition:transform .12s}
 .plate:hover{transform:translate(-50%,-50%) scale(1.06)}
@@ -249,4 +250,9 @@ a:hover{text-decoration:underline}
   .slider input[type=range]{height:6px}
   .slider input[type=range]::-webkit-slider-thumb{width:26px;height:26px}
   .foot{padding-left:20px;padding-right:20px}
+  .mealwrap{padding:24px 16px 0}
+  .meal-table{min-height:300px}
+  .plate .food-img{width:52px;height:52px}
+  .plate .food-emoji{font-size:42px}
+  .plate .plate-name{font-size:10px}
 }

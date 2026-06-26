@@ -8,7 +8,7 @@ const state = {
   item: "배추",
   scenario: { heat_days: 0, heavy_rain_days: 0, drought_idx: 20, cold_days: 0, frost: 0, month: 8 },
   items: [], normals: {}, events: [], series: [], normal: 0, r2: 0,
-  dishes: [], meal: [], mealUid: 0,
+  dishes: [], meal: [],
 };
 
 const SLIDERS = [
@@ -101,6 +101,19 @@ async function loadDishes() {
 }
 function dishById(id) { return state.dishes.find(d => d.id === id); }
 
+// 상차림 고정 자리 (식탁 위 %좌표). 뒷줄=반찬, 앞줄=밥·국, 가운데=메인.
+const MEAL_SLOTS = {
+  baechu_kimchi:   { x: 22, y: 30 },
+  mu_saengchae:    { x: 41, y: 25 },
+  sigeumchi_namul: { x: 59, y: 25 },
+  yangpa_jangajji: { x: 78, y: 30 },
+  jeyuk_bokkeum:   { x: 50, y: 50 },
+  rice:            { x: 26, y: 74 },
+  kimchi_jjigae:   { x: 50, y: 78 },
+  doenjang_jjigae: { x: 74, y: 74 },
+};
+function slotFor(id) { return MEAL_SLOTS[id] || { x: 50, y: 50 }; }
+
 function foodMedia(dish) {
   // 이미지 우선, 실패 시 이모지 폴백
   return `<img class="food-img" src="/assets/foods/${dish.img}" alt="${dish.name}"
@@ -113,11 +126,10 @@ function buildTray() {
   for (const d of state.dishes) {
     const card = document.createElement("div");
     card.className = "tray-card";
-    card.draggable = true;
     card.dataset.id = d.id;
     card.innerHTML = `${foodMedia(d)}<div class="food-name">${d.name}</div>`;
-    card.addEventListener("dragstart", e => e.dataTransfer.setData("text/plain", d.id));
-    card.addEventListener("click", () => addPlate(d.id)); // 모바일/탭 폴백
+    card.title = d.name + " (눌러서 올리기/빼기)";
+    card.addEventListener("click", () => toggleDish(d.id));
     tray.appendChild(card);
   }
 }
@@ -137,46 +149,36 @@ function buildMealPresets() {
 }
 
 function setupMealTable() {
-  const table = $("mealTable"); if (!table) return;
-  table.addEventListener("dragover", e => { e.preventDefault(); table.classList.add("drag-over"); });
-  table.addEventListener("dragleave", () => table.classList.remove("drag-over"));
-  table.addEventListener("drop", e => {
-    e.preventDefault(); table.classList.remove("drag-over");
-    const id = e.dataTransfer.getData("text/plain"); if (!id) return;
-    const rect = table.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    addPlate(id, x, y);
-  });
   const clear = $("mealClear");
   if (clear) clear.onclick = () => { state.meal = []; renderPlates(); simulateMeal(); };
 }
 
-function addPlate(id, x, y) {
-  const d = dishById(id); if (!d) return;
-  // 좌표 미지정(탭 추가) 시 가운데 부근에 분산 배치
-  if (x == null) { x = 30 + (state.meal.length * 17) % 45; y = 38 + (state.meal.length * 13) % 30; }
-  x = Math.max(10, Math.min(90, x)); y = Math.max(14, Math.min(86, y));
-  state.meal.push({ uid: ++state.mealUid, id, x, y });
-  renderPlates(); simulateMeal();
-}
-function removePlate(uid) {
-  state.meal = state.meal.filter(p => p.uid !== uid);
+// 클릭=토글. 이미 올라가 있으면 빼고, 없으면 고정 자리에 올린다(중복 불가).
+function toggleDish(id) {
+  if (!dishById(id)) return;
+  const i = state.meal.indexOf(id);
+  if (i >= 0) state.meal.splice(i, 1);
+  else state.meal.push(id);
   renderPlates(); simulateMeal();
 }
 function renderPlates() {
   const wrap = $("mealPlates"); if (!wrap) return;
   wrap.innerHTML = "";
-  for (const p of state.meal) {
-    const d = dishById(p.id); if (!d) continue;
+  for (const id of state.meal) {
+    const d = dishById(id); if (!d) continue;
+    const pos = slotFor(id);
     const el = document.createElement("div");
     el.className = "plate";
-    el.style.left = p.x + "%"; el.style.top = p.y + "%";
+    el.style.left = pos.x + "%"; el.style.top = pos.y + "%";
     el.innerHTML = `${foodMedia(d)}<div class="plate-name">${d.name}</div>`;
-    el.title = d.name + " (클릭 시 제거)";
-    el.onclick = () => removePlate(p.uid);
+    el.title = d.name + " (클릭 시 빼기)";
+    el.onclick = () => toggleDish(id);
     wrap.appendChild(el);
   }
+  // 트레이 선택 표시 동기화
+  const tray = $("mealTray");
+  if (tray) Array.from(tray.children).forEach(c =>
+    c.classList.toggle("on", state.meal.indexOf(c.dataset.id) >= 0));
   const hint = $("mealHint"); if (hint) hint.style.display = state.meal.length ? "none" : "";
 }
 
@@ -186,7 +188,7 @@ function simulateMeal() {
   mealTimer = setTimeout(doSimulateMeal, 110);
 }
 async function doSimulateMeal() {
-  const ids = state.meal.map(p => p.id);
+  const ids = state.meal.slice();
   let res;
   try {
     res = await api("/api/meal", {
