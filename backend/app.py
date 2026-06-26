@@ -12,6 +12,7 @@ from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from model import ClimateModel, FEATURES  # noqa: E402
+import dishes  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONT = os.path.join(ROOT, "frontend")
@@ -179,6 +180,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"item": crop, "correlations": MODEL.correlations(crop)})
             if p == "/api/quiz":
                 return self._json({"quiz": QUIZ})
+            if p == "/api/dishes":
+                return self._json({"dishes": dishes.all_dishes()})
             # 정적 파일
             return self._static(p)
         except Exception as e:  # noqa

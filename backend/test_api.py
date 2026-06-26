@@ -66,6 +66,21 @@ def run_checks():
     s, d = get("/api/quiz")
     check("quiz >=5문항", s == 200 and len(d["quiz"]) >= 5)
 
+    # dishes
+    s, d = get("/api/dishes")
+    check("dishes 200", s == 200)
+    ds = d.get("dishes", [])
+    check("dishes >=8종", len(ds) >= 8)
+    import dishes as _D
+    ok_struct = all(
+        x.get("id") and x.get("name") and isinstance(x.get("ingredients"), list)
+        and all(
+            (ing["kind"] == "crop" and ing["crop"] in _D.CROPS and ing.get("amount_kg", 0) > 0)
+            or (ing["kind"] == "fixed" and ing.get("won", 0) > 0)
+            for ing in x["ingredients"])
+        for x in ds)
+    check("dishes 재료구조 유효", ok_struct)
+
     # simulate — 배추 폭염 시나리오 → 평년 대비 상승
     s, d = post("/api/simulate", {"item": "배추", "heat_days": 30, "drought_idx": 80, "heavy_rain_days": 4, "month": 8})
     check("simulate 배추 200", s == 200)
