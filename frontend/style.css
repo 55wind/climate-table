@@ -36,8 +36,6 @@ a:hover{text-decoration:underline}
 .topbar-right{display:flex;gap:18px;align-items:center}
 .health{font-size:12px;letter-spacing:-.12px;color:#a1a1a6}
 .health.ok{color:#a1a1a6} .health.bad{color:#ff6961}
-.btn-quiz{background:var(--primary);color:#fff;border:none;border-radius:9999px;padding:7px 16px;font-size:14px;font-weight:400;letter-spacing:-.224px;transition:transform .12s}
-.btn-quiz:active{transform:scale(.95)}
 
 /* ---------- 히어로 (parchment, 가운데 정렬, 충만한 여백) ---------- */
 .hero{max-width:1080px;margin:0 auto;padding:64px 28px 8px;text-align:center}
@@ -127,22 +125,15 @@ a:hover{text-decoration:underline}
 
 .foot{max-width:1080px;margin:48px auto 40px;padding:24px 28px 0;font-size:12px;letter-spacing:-.12px;color:var(--muted-48);border-top:1px solid var(--hairline)}
 
-/* 모달 */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.48);display:grid;place-items:center;z-index:50;backdrop-filter:saturate(180%) blur(20px)}
-.modal[hidden]{display:none}
 [hidden]{display:none !important}
-.modal-box{position:relative;width:min(480px,92vw);background:var(--canvas);border-radius:18px;padding:32px 30px}
-.modal-close{position:absolute;top:18px;right:20px;background:none;border:none;font-size:19px;color:var(--muted-48)}
-.modal-box h2{font-size:24px;font-weight:600;line-height:1.3;letter-spacing:-.4px;margin-bottom:22px}
+
+/* 퀴즈 옵션 */
 .quiz-opts{display:flex;flex-direction:column;gap:10px}
 .quiz-opts button{text-align:left;background:var(--canvas);border:1px solid var(--hairline);border-radius:12px;padding:14px 16px;font-size:15px;letter-spacing:-.3px;transition:transform .12s,border-color .12s}
 .quiz-opts button:active{transform:scale(.98)}
 .quiz-opts button:hover{border-color:var(--ink)}
 .quiz-opts button.correct{background:var(--primary);color:#fff;border-color:var(--primary)}
 .quiz-opts button.wrong{background:#fafafc;color:var(--muted-48);border-color:var(--hairline)}
-.quiz-fb{font-size:14px;color:var(--muted);line-height:1.55;margin-top:18px;min-height:18px;letter-spacing:-.224px}
-.quiz-foot{display:flex;justify-content:space-between;align-items:center;margin-top:20px}
-#quizScore{font-size:14px;color:var(--muted-48);font-weight:400}
 .primary{background:var(--primary);color:#fff;border:none;border-radius:9999px;padding:11px 22px;font-weight:400;font-size:17px;letter-spacing:-.374px;transition:transform .12s}
 .primary:active{transform:scale(.95)}
 
