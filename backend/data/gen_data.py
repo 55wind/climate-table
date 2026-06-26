@@ -24,40 +24,40 @@ MONTHS = list(range(1, 13))
 CROPS = {
     # 기준가·민감도는 실제 도매가(KAMIS/가락시장·보도)에 맞춰 보정:
     #  배추 평년 도매 ~2,000원/kg(10kg 20,785), 2024 폭염 +73~100%, 2023.8 +118%
-    "배추": {  # 1포기≈2.5kg, 여름 고온·가뭄·호우에 매우 민감
+    "배추": {  # 1포기≈2.5kg, 여름 고온·가뭄·호우에 매우 민감 + 한파 동해
         "base": 1700, "unit": "원/kg",
-        "sens": {"heat": 82, "drought": 16.0, "heavy_rain": 70, "cold": 9, "frost": 0, "sun": -2.6},
+        "sens": {"heat": 82, "drought": 26.0, "heavy_rain": 70, "cold": 34, "frost": 0, "sun": -2.6},
         "season": {7: 300, 8: 560, 9: 600, 10: 500, 11: 440},  # 김장철 수요·고랭지
         "icon": "🥬",
     },
     "무": {  # 2023.8 폭염 무 +128% 사례
         "base": 920, "unit": "원/kg",
-        "sens": {"heat": 62, "drought": 13.0, "heavy_rain": 48, "cold": 9, "frost": 0, "sun": -1.8},
+        "sens": {"heat": 62, "drought": 22.0, "heavy_rain": 48, "cold": 22, "frost": 0, "sun": -1.8},
         "season": {8: 280, 9: 380, 10: 340, 11: 320},
         "icon": "🌰",
     },
     # 사과 평년 도매 ~3,500원/kg(10kg 34,980), 2024 금사과 +120~122%(kg 5,141, 10kg 77,672)
     "사과": {  # 연 1회 수확. 봄 개화기 냉해가 그 해 작황·연중 가격을 좌우
         "base": 3450, "unit": "원/kg",
-        "sens": {"heat": 18, "drought": 6.0, "heavy_rain": 34, "cold": 2, "frost": 470, "sun": -3.2},
+        "sens": {"heat": 18, "drought": 12.0, "heavy_rain": 34, "cold": 2, "frost": 470, "sun": -3.2},
         "season": {1: 650, 2: 760, 3: 720, 4: 600, 8: -350, 9: -560, 10: -650},  # 햇사과 출하기 하락
         "icon": "🍎",
     },
     "쌀": {  # 정부 관리로 비교적 안정. 태풍·호우·일조 영향
         "base": 2700, "unit": "원/kg",
-        "sens": {"heat": 3, "drought": 1.5, "heavy_rain": 9, "cold": 1, "frost": 0, "sun": -1.0},
+        "sens": {"heat": 3, "drought": 4.0, "heavy_rain": 9, "cold": 1, "frost": 0, "sun": -1.0},
         "season": {},
         "icon": "🌾",
     },
     "시금치": {  # 한파·고온 모두 취약(엽채류)
         "base": 3200, "unit": "원/kg",
-        "sens": {"heat": 28, "drought": 5.0, "heavy_rain": 22, "cold": 24, "frost": 6, "sun": -1.5},
+        "sens": {"heat": 28, "drought": 12.0, "heavy_rain": 22, "cold": 24, "frost": 6, "sun": -1.5},
         "season": {12: 300, 1: 350, 2: 300},
         "icon": "🥬",
     },
     "양파": {  # 봄 수확·저장. 봄 기상·저장조건
         "base": 1100, "unit": "원/kg",
-        "sens": {"heat": 10, "drought": 6.0, "heavy_rain": 12, "cold": 3, "frost": 10, "sun": -0.8},
+        "sens": {"heat": 10, "drought": 14.0, "heavy_rain": 12, "cold": 6, "frost": 10, "sun": -0.8},
         "season": {3: 180, 4: 150, 5: -100, 6: -120},
         "icon": "🧅",
     },
@@ -78,6 +78,9 @@ EVENTS = {
     (2022, 8): {"rain": 200, "heavy_rain": 8, "temp": 0.5},
     (2023, 4): {"frost": 70, "temp": -2.5},      # 사과 개화기 냉해
     (2023, 7): {"rain": 180, "heavy_rain": 6},
+    (2021, 1): {"temp": -4.5, "cold": 9},        # 2021 1월 역대급 한파
+    (2018, 1): {"temp": -3.5, "cold": 6},        # 2018 1월 강한 한파
+    (2022, 12): {"temp": -3.0, "cold": 6},       # 2022 말 한파
     (2024, 7): {"heat": 12, "temp": 2.2, "drought": 18},
     (2024, 8): {"heat": 18, "temp": 3.0, "drought": 30, "sun": 25},  # 역대급 폭염
     (2024, 9): {"heat": 8, "temp": 2.5},
@@ -97,14 +100,15 @@ def gen_month(year, month):
     heat = 0
     if month in (6, 7, 8, 9):
         heat = clamp(round((temp - 24) * 2.2 + ev.get("heat", 0) + random.gauss(0, 1)), 0, 31)
-    # 한파일수: 겨울철 저온
+    # 한파일수: 겨울철. 평년 기준 + 그해 추위(기온 편차) + 사건 + 독립 변동
     cold = 0
     if month in (12, 1, 2):
-        cold = clamp(round((-2 - temp) * 1.8 + random.gauss(0, 1)), 0, 28)
+        base_cold = {12: 9, 1: 14, 2: 8}[month]
+        cold = clamp(round(base_cold + (CLIMO_TEMP[month] - temp) * 2.2 + ev.get("cold", 0) + random.gauss(0, 4)), 0, 28)
     # 호우일수
     heavy = clamp(round(rain / 90 - 1 + ev.get("heavy_rain", 0) + random.gauss(0, 0.5)), 0, 12)
-    # 가뭄지수(강수 부족 + 고온)
-    drought = clamp(round((CLIMO_RAIN[month] - rain) / CLIMO_RAIN[month] * 60 + ev.get("drought", 0) + max(0, heat) * 1.2), 0, 100)
+    # 가뭄지수: 강수 부족 + 사건 + 독립 변동(폭염과 분리 → 회귀가 가뭄 효과를 따로 학습)
+    drought = clamp(round((CLIMO_RAIN[month] - rain) / CLIMO_RAIN[month] * 28 + ev.get("drought", 0) + random.gauss(0, 12)), 0, 100)
     # 개화기 냉해(주로 4월)
     frost = ev.get("frost", 0) if month == 4 else (random.choice([0, 0, 0, 5]) if month == 4 else 0)
     return {
