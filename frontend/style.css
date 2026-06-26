@@ -216,12 +216,17 @@ a:hover{text-decoration:underline}
 
 .meal-result{padding:24px}
 .meal-empty{color:var(--muted-48);font-size:15px;text-align:center;padding:8px 0}
-.meal-total{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--divider)}
+.meal-totals{display:flex;flex-direction:column;gap:12px;padding-bottom:18px;border-bottom:1px solid var(--divider)}
+.meal-total{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
 .meal-total .mt-label{font-size:14px;color:var(--muted-48)}
 .meal-total .mt-num{font-size:44px;font-weight:600;letter-spacing:-1px;line-height:1;margin-top:4px}
 .meal-total .mt-num small{font-size:17px;color:var(--muted-48);margin-left:4px}
 .meal-total .mt-pct{font-size:26px;font-weight:600;letter-spacing:-.4px;white-space:nowrap}
 .meal-total .mt-pct.up{color:var(--ink)} .meal-total .mt-pct.down{color:var(--primary)}
+.meal-total.sub{padding-top:12px;border-top:1px solid var(--divider)}
+.meal-total.sub .mt-num{font-size:28px;color:var(--muted)}
+.meal-total.sub .mt-num small{font-size:14px}
+.meal-total.sub .mt-pct{font-size:18px}
 .meal-insight{font-size:15px;color:var(--muted);margin:16px 0;letter-spacing:-.3px;line-height:1.5}
 .meal-insight b{color:var(--ink)}
 .meal-section-label{font-size:13px;font-weight:600;color:var(--muted-48);letter-spacing:-.2px;margin:18px 0 10px}

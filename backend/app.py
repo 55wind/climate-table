@@ -129,8 +129,12 @@ def _pct(pred, base):
     return round((pred - base) / base * 100) if base else 0
 
 
+def _amt(pred, base):
+    return {"predicted": pred, "baseline": base, "pct": _pct(pred, base)}
+
+
 def compute_meal(scenario, month, dish_ids):
-    """음식 id 목록 → 음식별·재료별·총액(예측 vs 평년 기상)."""
+    """음식 id 목록 → 음식별·재료별·총 원가/외식가(예측 vs 평년 기상)."""
     crop_cache = {}
 
     def crop_price(crop):
@@ -141,7 +145,7 @@ def compute_meal(scenario, month, dish_ids):
         return crop_cache[crop]
 
     out_dishes, agg = [], {}
-    total_p = total_b = 0
+    cost_p = cost_b = eat_p = eat_b = 0
     for did in dish_ids:
         d = dishes.by_id(did)
         if not d:
@@ -164,17 +168,28 @@ def compute_meal(scenario, month, dish_ids):
             db += ib
             ings.append({"name": ing["name"], "kind": ing["kind"],
                          "predicted": ip, "baseline": ib, "pct": _pct(ip, ib)})
+        # 외식가 = 메뉴 기준가 + 재료비 상승분 전가
+        menu = int(d.get("eatout", 0))
+        ed_p, ed_b = menu + (dp - db), menu
         out_dishes.append({"id": d["id"], "name": d["name"],
-                           "predicted": dp, "baseline": db, "pct": _pct(dp, db),
+                           "cost": _amt(dp, db), "eatout": _amt(ed_p, ed_b),
                            "ingredients": ings})
-        total_p += dp
-        total_b += db
+        cost_p += dp
+        cost_b += db
+        eat_p += ed_p
+        eat_b += ed_b
 
-    ing_totals = [{"crop": c, "predicted": v["predicted"], "baseline": v["baseline"],
-                   "pct": _pct(v["predicted"], v["baseline"]), "usedIn": v["usedIn"]}
-                  for c, v in agg.items()]
+    ing_totals = []
+    for c, v in agg.items():
+        u = dishes.UNITS.get(c, {"unit": "", "kg": 1})
+        pp, bb = crop_cache[c]
+        ing_totals.append({
+            "crop": c, "unit": u["unit"], "unitKg": u["kg"],
+            "unitPrice": _amt(round(pp * u["kg"]), round(bb * u["kg"])),
+            "predicted": v["predicted"], "baseline": v["baseline"],
+            "pct": _pct(v["predicted"], v["baseline"]), "usedIn": v["usedIn"]})
     ing_totals.sort(key=lambda x: x["predicted"] - x["baseline"], reverse=True)
-    return {"total": {"predicted": total_p, "baseline": total_b, "pct": _pct(total_p, total_b)},
+    return {"total": {"cost": _amt(cost_p, cost_b), "eatout": _amt(eat_p, eat_b)},
             "dishes": out_dishes, "ingredientTotals": ing_totals}
 
 
@@ -234,7 +249,7 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/quiz":
                 return self._json({"quiz": QUIZ})
             if p == "/api/dishes":
-                return self._json({"dishes": dishes.all_dishes()})
+                return self._json({"dishes": dishes.all_dishes(), "units": dishes.UNITS})
             # 정적 파일
             return self._static(p)
         except Exception as e:  # noqa

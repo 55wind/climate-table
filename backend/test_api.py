@@ -77,13 +77,15 @@ def run_checks():
     check("dishes >=8종", len(ds) >= 8)
     import dishes as _D
     ok_struct = all(
-        x.get("id") and x.get("name") and isinstance(x.get("ingredients"), list)
+        x.get("id") and x.get("name") and x.get("eatout", 0) > 0 and isinstance(x.get("ingredients"), list)
         and all(
             (ing["kind"] == "crop" and ing["crop"] in _D.CROPS and ing.get("amount_kg", 0) > 0)
             or (ing["kind"] == "fixed" and ing.get("won", 0) > 0)
             for ing in x["ingredients"])
         for x in ds)
-    check("dishes 재료구조 유효", ok_struct)
+    check("dishes 재료구조+외식가 유효", ok_struct)
+    check("dishes units 6작물", len(d.get("units", {})) == 6
+          and all(u.get("unit") and u.get("kg", 0) > 0 for u in d["units"].values()))
 
     # simulate — 배추 폭염 시나리오 → 평년 대비 상승
     s, d = post("/api/simulate", {"item": "배추", "heat_days": 30, "drought_idx": 80, "heavy_rain_days": 4, "month": 8})
@@ -105,26 +107,32 @@ def run_checks():
     s, d = post("/api/simulate", {"item": "쌀"})
     check("simulate 빈 시나리오 정상", s == 200 and d["predicted"] > 0)
 
-    # meal — 폭염 시나리오에서 밥상 총액 상승
+    # meal — 폭염 시나리오에서 밥상 원가·외식가 상승
     hot = {"heat_days": 30, "drought_idx": 80, "heavy_rain_days": 4}
     s, d = post("/api/meal", {"scenario": hot, "month": 8,
                               "dishes": ["rice", "kimchi_jjigae", "baechu_kimchi"]})
     check("meal 200", s == 200)
-    check("meal total>0", d["total"]["predicted"] > 0)
-    check("meal 폭염→총액 상승", d["total"]["predicted"] >= d["total"]["baseline"]
-          and d["total"]["pct"] > 0, f"pct={d['total']['pct']}")
-    check("meal 음식 3개", len(d["dishes"]) == 3)
-    check("meal 원자재 집계 존재", len(d["ingredientTotals"]) >= 1)
+    check("meal 원가>0", d["total"]["cost"]["predicted"] > 0)
+    check("meal 폭염→원가 상승", d["total"]["cost"]["predicted"] >= d["total"]["cost"]["baseline"]
+          and d["total"]["cost"]["pct"] > 0, f"pct={d['total']['cost']['pct']}")
+    check("meal 외식가>원가", d["total"]["eatout"]["predicted"] > d["total"]["cost"]["predicted"])
+    check("meal 폭염→외식가 상승", d["total"]["eatout"]["predicted"] >= d["total"]["eatout"]["baseline"])
+    check("meal 음식 3개·cost/eatout", len(d["dishes"]) == 3
+          and all("cost" in x and "eatout" in x for x in d["dishes"]))
+    check("meal 원자재 단위가", len(d["ingredientTotals"]) >= 1
+          and all(i.get("unit") and "unitPrice" in i for i in d["ingredientTotals"]))
     # meal — 빈 밥상
     s, d = post("/api/meal", {"scenario": hot, "month": 8, "dishes": []})
-    check("meal 빈 밥상 0원", s == 200 and d["total"]["predicted"] == 0 and d["total"]["pct"] == 0)
+    check("meal 빈 밥상 0원", s == 200 and d["total"]["cost"]["predicted"] == 0
+          and d["total"]["eatout"]["predicted"] == 0)
     # meal — 알 수 없는 음식은 스킵
     s, d = post("/api/meal", {"scenario": hot, "month": 8, "dishes": ["rice", "없는음식"]})
     check("meal 미지음식 스킵", s == 200 and len(d["dishes"]) == 1)
-    # meal — 평년 시나리오 → pct≈0
+    # meal — 평년 시나리오 → 원가·외식가 pct≈0
     base = {"heat_days": 0, "cold_days": 0, "heavy_rain_days": 0, "drought_idx": 20, "frost": 0}
     s, d = post("/api/meal", {"scenario": base, "month": 8, "dishes": ["kimchi_jjigae"]})
-    check("meal 평년 pct≈0", abs(d["total"]["pct"]) <= 1, f"pct={d['total']['pct']}")
+    check("meal 평년 pct≈0", abs(d["total"]["cost"]["pct"]) <= 1
+          and abs(d["total"]["eatout"]["pct"]) <= 1, f"pct={d['total']['cost']['pct']}")
 
 
 def main():

@@ -222,36 +222,44 @@ function renderMeal(res) {
   updateWeatherBadge();
   const box = $("mealResult"); if (!box) return;
   if (!res || !res.dishes || !res.dishes.length) {
-    box.innerHTML = `<p class="meal-empty">식탁이 비었습니다. 위 음식을 끌어다 올려 보세요.</p>`;
+    box.innerHTML = `<p class="meal-empty">식탁이 비었습니다. 위 음식을 눌러 올려 보세요.</p>`;
     return;
   }
-  const t = res.total;
-  const pctTxt = (t.pct > 0 ? "+" : "") + t.pct + "%";
+  const cost = res.total.cost, eat = res.total.eatout;
+  const sign = p => (p > 0 ? "+" : "") + p + "%";
   const top = res.ingredientTotals[0];
-  const insight = top && t.pct > 0
+  const insight = top && cost.pct > 0
     ? `이 날씨에서 <b>${top.crop}</b>${gaParticle(top.crop)} 평년比 <b>+${top.pct}%</b>로 밥상값을 가장 많이 끌어올렸습니다.`
-    : (t.pct > 0 ? "기상 영향으로 밥상값이 소폭 올랐습니다." : "평년 날씨와 비슷한 수준입니다.");
+    : (cost.pct > 0 ? "기상 영향으로 밥상값이 소폭 올랐습니다." : "평년 날씨와 비슷한 수준입니다.");
   const dishRows = res.dishes.map(d =>
-    `<div class="dish-row"><span class="dr-name">${d.name}<span class="dr-pct">${d.pct > 0 ? "+" + d.pct + "%" : ""}</span></span>
-       <span class="dr-price">${d.predicted.toLocaleString()}원</span></div>`).join("");
+    `<div class="dish-row"><span class="dr-name">${d.name}<span class="dr-pct">${d.cost.pct > 0 ? "+" + d.cost.pct + "%" : ""}</span></span>
+       <span class="dr-price">원가 ${d.cost.predicted.toLocaleString()} · 외식 ${d.eatout.predicted.toLocaleString()}원</span></div>`).join("");
   const maxDelta = Math.max(1, ...res.ingredientTotals.map(i => i.predicted - i.baseline));
   const ingBars = res.ingredientTotals.map(i => {
-    const delta = i.predicted - i.baseline;
-    const w = Math.max(3, delta / maxDelta * 100);
-    return `<div class="ing-bar"><div class="ib-top"><span>${i.crop} <small style="color:#86868b">${i.usedIn.join("·")}</small></span>
-        <b>${i.pct > 0 ? "+" : ""}${i.pct}% · ${i.predicted.toLocaleString()}원</b></div>
+    const w = Math.max(3, (i.predicted - i.baseline) / maxDelta * 100);
+    const up = i.unitPrice;
+    return `<div class="ing-bar"><div class="ib-top">
+        <span>${i.crop} <small style="color:#86868b">1${i.unit} ${up.predicted.toLocaleString()}원 (평년 ${up.baseline.toLocaleString()})</small></span>
+        <b>${sign(i.pct)}</b></div>
         <div class="ib-track"><div class="ib-fill" style="width:${w}%"></div></div></div>`;
   }).join("");
   box.innerHTML = `
-    <div class="meal-total">
-      <div><span class="mt-label">밥상 총액</span>
-        <div class="mt-num">${t.predicted.toLocaleString()}<small>원</small></div></div>
-      <div class="mt-pct ${t.pct >= 0 ? "up" : "down"}">${pctTxt}</div>
+    <div class="meal-totals">
+      <div class="meal-total">
+        <div><span class="mt-label">재료 원가 (집에서 해먹을 때)</span>
+          <div class="mt-num">${cost.predicted.toLocaleString()}<small>원</small></div></div>
+        <div class="mt-pct ${cost.pct >= 0 ? "up" : "down"}">${sign(cost.pct)}</div>
+      </div>
+      <div class="meal-total sub">
+        <div><span class="mt-label">사먹을 때 (외식)</span>
+          <div class="mt-num">${eat.predicted.toLocaleString()}<small>원</small></div></div>
+        <div class="mt-pct ${eat.pct >= 0 ? "up" : "down"}">${sign(eat.pct)}</div>
+      </div>
     </div>
-    <p class="meal-insight">${insight} 평년 밥상은 약 ${t.baseline.toLocaleString()}원입니다.</p>
-    <div class="meal-section-label">음식별</div>
+    <p class="meal-insight">${insight} 평년이라면 재료 원가 약 ${cost.baseline.toLocaleString()}원 · 외식 ${eat.baseline.toLocaleString()}원입니다.</p>
+    <div class="meal-section-label">음식별 (원가 · 외식)</div>
     <div class="dish-list">${dishRows}</div>
-    <div class="meal-section-label">원자재(기후 작물) 가격 영향</div>
+    <div class="meal-section-label">원자재(기후 작물) 가격 영향 · 구매단위 기준</div>
     <div class="ing-bars">${ingBars || '<p class="meal-empty">기후 작물 재료가 없습니다.</p>'}</div>`;
 }
 
