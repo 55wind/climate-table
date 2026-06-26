@@ -27,6 +27,7 @@ Python 3.8+ 면 충분합니다. (개발·검증: Python 3.11)
 | 프리셋 | 2024 폭염·2020 장마·2023 냉해(금사과)·한파·평년 |
 | 결과 | 예측 가격 + 같은 시기 평년 기상 대비 % + 가격 기여 요인 |
 | 차트 | 2018~2025 실제 가격 추이 + 기상 사건 표시 + 현재 예측선 |
+| 밥상 차리기 | 음식을 식탁에 드래그&드롭 → 재료(원자재)별 물가상승률 + 밥상 총액(같은 날씨 시나리오 공유) |
 | 학습 | 기상-가격 상관, 적응·해결방안, 🎓 퀴즈 |
 
 ## 🧩 아키텍처 (프론트엔드 + 백엔드)
@@ -36,8 +37,10 @@ Python 3.8+ 면 충분합니다. (개발·검증: Python 3.11)
     │  fetch /api/*
     ▼
 [백엔드] backend/app.py — Python http.server (표준 라이브러리만)
-    ├─ GET  /api/health  /items  /series  /correlate  /model  /quiz
+    ├─ GET  /api/health  /items  /series  /correlate  /model  /quiz  /dishes
     ├─ POST /api/simulate  (시나리오 → 예측·기여·해설·적응전략)
+    ├─ POST /api/meal      (밥상 음식 목록 → 음식·재료별 가격·총액)
+    ├─ backend/dishes.py — 음식 카탈로그(레시피·정가)
     └─ backend/model.py — 순수 파이썬 릿지 회귀 (학습·예측·상관·신뢰도)
 [데이터] backend/data/dataset.json (2018~2025 월별)
          backend/data/gen_data.py (데이터 생성기)
