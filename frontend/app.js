@@ -101,7 +101,7 @@ async function loadDishes() {
 }
 function dishById(id) { return state.dishes.find(d => d.id === id); }
 
-function foodMedia(dish, cls) {
+function foodMedia(dish) {
   // 이미지 우선, 실패 시 이모지 폴백
   return `<img class="food-img" src="/assets/foods/${dish.img}" alt="${dish.name}"
     onerror="this.outerHTML='<span class=\\'food-emoji\\'>${dish.emoji}</span>'">`;

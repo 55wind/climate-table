@@ -203,8 +203,6 @@ a:hover{text-decoration:underline}
   background:radial-gradient(ellipse 70% 60% at 50% 50%,#e8d4b0,#d8bd92);
   border:3px solid #c4a574;overflow:hidden;transition:box-shadow .15s}
 .meal-table.drag-over{box-shadow:inset 0 0 0 3px var(--primary)}
-.meal-table.has-bg{background:#f0ead9}
-.meal-table .table-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .meal-plates{position:absolute;inset:0}
 .plate{position:absolute;transform:translate(-50%,-50%);text-align:center;cursor:pointer;transition:transform .12s}
 .plate:hover{transform:translate(-50%,-50%) scale(1.06)}
