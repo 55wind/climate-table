@@ -33,16 +33,33 @@ const UNIT_PACK = {
   "시금치": { label: "1단", kg: 0.4 }, "양파": { label: "1망(1.5kg)", kg: 1.5 },
 };
 
-// 남한 단순화 외곽선 [경도,위도] + 제주
-const SK_OUTLINE = [
-  [126.55, 37.75], [126.40, 37.0], [126.50, 36.6], [126.30, 36.0], [126.50, 35.6],
-  [126.30, 35.0], [126.45, 34.6], [126.9, 34.4], [127.5, 34.5], [127.8, 34.75],
-  [128.4, 34.85], [128.7, 35.0], [129.1, 35.1], [129.45, 35.6], [129.5, 36.05],
-  [129.4, 36.6], [129.1, 37.2], [128.9, 37.75], [128.6, 38.25], [128.4, 38.55],
-  [128.0, 38.35], [127.3, 38.30], [126.9, 38.10], [126.55, 37.95], [126.55, 37.75]
+// 남한 실측 해안선(GeoJSON 단순화, [경도,위도]) — 본토 + 제주
+const SK_MAIN = [
+  [128.362,38.617],[128.283,38.436],[128.14,38.334],[127.138,38.315],[126.822,38.007],[126.668,37.956],
+  [126.666,37.78],[126.429,37.835],[126.228,37.814],[126.166,37.677],[126.056,37.734],[126.373,37.586],
+  [126.288,37.558],[126.376,37.396],[126.416,37.351],[126.51,37.416],[126.575,37.316],[126.436,37.293],
+  [126.421,37.224],[126.494,37.234],[126.729,37.039],[126.409,37.074],[126.269,36.925],[126.166,36.903],
+  [126.035,36.679],[126.264,36.653],[126.319,36.325],[126.501,36.305],[126.481,36.142],[126.641,36.024],
+  [126.513,35.994],[126.514,35.928],[126.674,35.814],[126.453,35.648],[126.468,35.581],[126.586,35.553],
+  [126.481,35.527],[126.286,35.215],[126.438,35.073],[126.367,35.088],[126.335,35.173],[126.236,35.109],
+  [126.157,35.154],[126.01,35.107],[126.112,35.038],[126.115,34.941],[126.183,34.937],[126.208,34.852],
+  [126.317,34.827],[126.234,34.705],[126.233,34.552],[126.085,34.461],[126.111,34.356],[126.339,34.371],
+  [126.418,34.524],[126.499,34.419],[126.455,34.351],[126.541,34.268],[126.622,34.283],[126.635,34.37],
+  [126.677,34.287],[126.896,34.3],[126.962,34.418],[126.9,34.441],[126.973,34.44],[127.009,34.588],
+  [127.235,34.744],[127.103,34.556],[127.094,34.435],[127.209,34.411],[127.243,34.505],[127.343,34.427],
+  [127.435,34.503],[127.474,34.416],[127.549,34.426],[127.485,34.526],[127.51,34.618],[127.716,34.558],
+  [127.809,34.404],[127.785,34.859],[127.744,34.872],[127.791,34.931],[127.87,34.717],[127.94,34.767],
+  [127.943,34.709],[128.07,34.677],[128.091,34.906],[128.234,34.914],[128.329,34.858],[128.376,34.733],
+  [128.432,34.711],[128.442,34.784],[128.455,34.695],[128.616,34.693],[128.765,34.822],[128.73,34.995],
+  [129.1,35.043],[129.379,35.353],[129.386,35.453],[129.457,35.468],[129.604,36.032],[129.543,36.097],
+  [129.462,36.03],[129.419,36.057],[129.402,36.342],[129.466,36.493],[129.427,36.603],[129.493,36.771],
+  [129.438,37.062],[129.349,37.286],[128.632,38.148],[128.362,38.617],
 ];
-const SK_JEJU = { lon: 126.5, lat: 33.4, r: 0.42 };
-const SK_DOMAIN = { lonMin: 125.7, lonMax: 130.0, latMin: 32.9, latMax: 38.9 };
+const SK_JEJU_RING = [
+  [126.815,33.576],[126.315,33.481],[126.193,33.402],[126.149,33.29],[126.247,33.156],[126.278,33.151],
+  [126.337,33.218],[126.609,33.221],[126.807,33.282],[126.869,33.32],[126.985,33.5],[126.815,33.576],
+];
+const SK_DOMAIN = { lonMin: 125.5, lonMax: 130.1, latMin: 32.9, latMax: 38.9 };
 // 작물별 주요 산지: {name, lon, lat, w(상대 민감도·비중)}
 const CROP_REGIONS = {
   "배추": [{ n: "강원 고랭지", lon: 128.4, lat: 37.6, w: 1.3 }, { n: "전남 해남", lon: 126.6, lat: 34.6, w: 1.0 }, { n: "충북", lon: 127.6, lat: 36.8, w: 0.9 }, { n: "경북", lon: 128.7, lat: 36.4, w: 0.85 }],
@@ -483,70 +500,105 @@ function drawChart() {
   }
 }
 
-/* ---------- 지역별 영향 지도 (Canvas, 세팅값 반응) ---------- */
+/* ---------- 지역별 영향 지도 (Canvas, 실측 해안선) ---------- */
+// 점들을 부드러운 닫힌 곡선으로(중점 quadratic) — 각진 느낌 제거
+function tracePath(ctx, ring) {
+  const n = ring.length; if (n < 3) return;
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  let m0 = mid(ring[n - 1], ring[0]);
+  ctx.moveTo(m0[0], m0[1]);
+  for (let i = 0; i < n; i++) {
+    const cur = ring[i], nxt = ring[(i + 1) % n], m = mid(cur, nxt);
+    ctx.quadraticCurveTo(cur[0], cur[1], m[0], m[1]);
+  }
+  ctx.closePath();
+}
 function drawMap(pct) {
   const cv = $("mapCanvas"); if (!cv) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = cv.clientWidth, h = 320;
+  const w = cv.clientWidth || cv.width, h = 380;
   cv.width = w * dpr; cv.height = h * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const D = SK_DOMAIN, pad = 12;
-  const lonSpan = (D.lonMax - D.lonMin) * Math.cos(36 * Math.PI / 180), latSpan = D.latMax - D.latMin;
+  const D = SK_DOMAIN, pad = 18, cosM = Math.cos(36 * Math.PI / 180);
+  const lonSpan = (D.lonMax - D.lonMin) * cosM, latSpan = D.latMax - D.latMin;
   const sc = Math.min((w - pad * 2) / lonSpan, (h - pad * 2) / latSpan);
-  const cxp = w / 2, cyp = h / 2, midLon = (D.lonMin + D.lonMax) / 2, midLat = (D.latMin + D.latMax) / 2, cosM = Math.cos(36 * Math.PI / 180);
+  const cxp = w / 2, cyp = h / 2, midLon = (D.lonMin + D.lonMax) / 2, midLat = (D.latMin + D.latMax) / 2;
   const P = (lon, lat) => [cxp + (lon - midLon) * cosM * sc, cyp - (lat - midLat) * sc];
-  // 외곽선
-  ctx.beginPath();
-  SK_OUTLINE.forEach((p, i) => { const [x, y] = P(p[0], p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-  ctx.closePath();
-  ctx.fillStyle = "#eceae3"; ctx.fill();
-  ctx.strokeStyle = "#cfcabd"; ctx.lineWidth = 1; ctx.stroke();
-  // 제주
-  const [jx, jy] = P(SK_JEJU.lon, SK_JEJU.lat);
-  ctx.beginPath(); ctx.ellipse(jx, jy, SK_JEJU.r * cosM * sc, SK_JEJU.r * sc * 0.7, 0, 0, 7);
-  ctx.fillStyle = "#eceae3"; ctx.fill(); ctx.stroke();
-  // 산지 점 계산
+  const mainPx = SK_MAIN.map(p => P(p[0], p[1]));
+  const jejuPx = SK_JEJU_RING.map(p => P(p[0], p[1]));
+
+  // 1) 바다 배경(아주 옅은 한류색 그라데이션)
+  const sea = ctx.createLinearGradient(0, 0, 0, h);
+  sea.addColorStop(0, "#eef4f8"); sea.addColorStop(1, "#e4edf3");
+  ctx.fillStyle = sea; ctx.fillRect(0, 0, w, h);
+  // 2) 위경도 그리드(은은하게) — 지도 느낌
+  ctx.strokeStyle = "rgba(80,110,140,0.07)"; ctx.lineWidth = 1;
+  for (let lon = Math.ceil(D.lonMin); lon <= D.lonMax; lon++) {
+    const [x] = P(lon, midLat); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let lat = Math.ceil(D.latMin); lat <= D.latMax; lat++) {
+    const [, y] = P(midLon, lat); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  // 3) 육지(그림자 → 그라데이션 채움 → 해안선)
+  const land = ctx.createLinearGradient(0, cyp - latSpan * sc / 2, 0, cyp + latSpan * sc / 2);
+  land.addColorStop(0, "#f4f2ea"); land.addColorStop(1, "#e6e1d3");
+  const paintLand = (ring, withShadow) => {
+    ctx.beginPath(); tracePath(ctx, ring);
+    if (withShadow) { ctx.save(); ctx.shadowColor = "rgba(40,60,80,0.18)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4; }
+    ctx.fillStyle = land; ctx.fill();
+    if (withShadow) ctx.restore();
+    ctx.strokeStyle = "#b9c2b2"; ctx.lineWidth = 1.4; ctx.lineJoin = "round"; ctx.stroke();
+  };
+  paintLand(mainPx, true);
+  paintLand(jejuPx, true);
+
+  // 4) 산지 점 계산
   const regions = CROP_REGIONS[state.item] || [];
   const pts = regions.map(r => {
     const [x, y] = P(r.lon, r.lat);
     const impact = Math.max(0, pct) * r.w;
-    const rad = 7 + r.w * 4 + Math.min(9, Math.max(0, pct) / 80 * 9);
+    const rad = 11 + r.w * 5 + Math.min(13, Math.max(0, pct) / 80 * 13);
     return { r, x0: x, y0: y, x, y, rad, impact };
   });
   // 겹침 분리(반발 + 원위치 스프링)
   for (let it = 0; it < 90; it++) {
     for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
       const a = pts[i], b = pts[j];
-      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, min = a.rad + b.rad + 16;
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, min = a.rad + b.rad + 20;
       if (d < min) { const push = (min - d) / 2, ux = dx / d, uy = dy / d; a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push; }
     }
     for (const p of pts) {
       p.x += (p.x0 - p.x) * 0.03; p.y += (p.y0 - p.y) * 0.03;
-      p.x = Math.max(p.rad + 20, Math.min(w - p.rad - 20, p.x));
-      p.y = Math.max(p.rad + 16, Math.min(h - p.rad - 24, p.y));
+      p.x = Math.max(p.rad + 22, Math.min(w - p.rad - 22, p.x));
+      p.y = Math.max(p.rad + 20, Math.min(h - p.rad - 26, p.y));
     }
   }
-  // 그리기 (연결선 → 원 → 라벨)
+  // 5) 그리기 (지시선 → 원 → 라벨)
   ctx.textAlign = "center";
   for (const p of pts) {
     if (Math.hypot(p.x - p.x0, p.y - p.y0) > 3) {
-      ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(p.x0, p.y0); ctx.lineTo(p.x, p.y); ctx.stroke();
-      ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.arc(p.x0, p.y0, 2, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(p.x0, p.y0, 2.5, 0, 7); ctx.fill();
     }
   }
   for (const p of pts) {
-    const alpha = Math.min(0.82, 0.1 + p.impact / 80 * 0.72);
+    const alpha = Math.min(0.85, 0.14 + p.impact / 80 * 0.7);
+    ctx.save();
+    ctx.shadowColor = pct >= 0 ? "rgba(0,102,204,0.35)" : "rgba(0,0,0,0.12)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.rad, 0, 7);
-    ctx.fillStyle = pct >= 0 ? `rgba(0,102,204,${alpha})` : "rgba(134,134,139,0.22)"; ctx.fill();
-    ctx.lineWidth = 1.2; ctx.strokeStyle = pct >= 0 ? "rgba(0,102,204,0.9)" : "rgba(134,134,139,0.7)"; ctx.stroke();
-    ctx.fillStyle = "#1d1d1f"; ctx.font = "600 11px Inter, Pretendard"; ctx.fillText(p.r.n, p.x, p.y - p.rad - 5);
-    ctx.fillStyle = pct >= 0 ? "#0066cc" : "#86868b"; ctx.font = "700 11px Inter, Pretendard"; ctx.fillText((pct > 0 ? "+" : "") + Math.round(p.impact) + "%", p.x, p.y + 4);
+    ctx.fillStyle = pct >= 0 ? `rgba(0,102,204,${alpha})` : "rgba(134,134,139,0.25)"; ctx.fill();
+    ctx.restore();
+    ctx.lineWidth = 1.4; ctx.strokeStyle = pct >= 0 ? "rgba(0,102,204,0.95)" : "rgba(134,134,139,0.75)"; ctx.stroke();
+    ctx.fillStyle = "#1d1d1f"; ctx.font = "600 12px Inter, Pretendard";
+    ctx.fillText(p.r.n, p.x, p.y - p.rad - 6);
+    ctx.fillStyle = (pct >= 0 && alpha > 0.5) ? "#fff" : "#1d1d1f"; ctx.font = "700 12px Inter, Pretendard";
+    ctx.fillText((pct > 0 ? "+" : "") + Math.round(p.impact) + "%", p.x, p.y + 4);
   }
-  // 범례
-  ctx.textAlign = "left"; ctx.fillStyle = "#86868b"; ctx.font = "11px Inter, Pretendard";
-  ctx.fillText(state.item + " 주요 산지 · 가격 상승 압력", pad + 2, h - 8);
+  // 6) 범례
+  ctx.textAlign = "left"; ctx.fillStyle = "#7a7a7a"; ctx.font = "11px Inter, Pretendard";
+  ctx.fillText(state.item + " 주요 산지 · 가격 상승 압력", pad, h - 10);
 }
 
 /* ---------- 탭 전환 ---------- */
