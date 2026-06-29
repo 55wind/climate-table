@@ -149,7 +149,7 @@ a:hover{text-decoration:underline}
 .quizwrap{max-width:680px;margin:0 auto;padding:40px 28px 0}
 .qkicker{display:inline-block;font-size:13px;font-weight:600;color:var(--primary);letter-spacing:-.2px;margin-bottom:10px}
 .qintro{text-align:center;padding:52px 32px}
-.qintro h2{font-size:28px;font-weight:600;letter-spacing:-.5px;margin-bottom:12px}
+.qintro h2{display:block;font-size:28px;font-weight:600;letter-spacing:-.5px;margin-bottom:12px}
 .qsub{font-size:16px;color:var(--muted);line-height:1.55;margin:0 auto 22px;max-width:520px;letter-spacing:-.3px}
 .qcatsel{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:0 auto 26px;max-width:480px}
 .qchip{background:var(--canvas);border:1px solid var(--hairline);border-radius:9999px;padding:9px 18px;font-size:14px;font-weight:500;letter-spacing:-.3px;color:var(--ink);min-height:40px;transition:transform .12s,border-color .12s}
