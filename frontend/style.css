@@ -77,6 +77,7 @@ a:hover{text-decoration:underline}
 .slider .lab{display:flex;justify-content:space-between;color:var(--muted);margin-bottom:8px}
 .slider .lab b{color:var(--ink);font-size:15px;font-weight:600}
 .slider input[type=range]{width:100%;accent-color:var(--primary);height:4px}
+.slider .tip{font-size:12px;letter-spacing:-.12px;color:var(--muted-48);margin-top:6px;line-height:1.45}
 .src{font-size:12px;letter-spacing:-.12px;color:var(--muted-48);margin-top:22px;line-height:1.4}
 
 /* ---------- 결과 ---------- */
@@ -99,6 +100,8 @@ a:hover{text-decoration:underline}
 .note{font-size:14px;color:var(--muted);background:var(--parchment);border-radius:11px;padding:14px 16px;line-height:1.5;letter-spacing:-.224px}
 .r2{font-size:13px;letter-spacing:-.2px;color:var(--muted-48);margin-top:18px;border-top:1px solid var(--divider);padding-top:14px;line-height:1.5}
 .r2 b{color:var(--ink);font-weight:600}
+.r2-lesson{margin-top:12px;padding:10px 12px;background:rgba(0,102,204,.06);border-radius:10px;font-size:12.5px;line-height:1.55;color:var(--muted)}
+.r2-lesson b{color:var(--primary);font-weight:600}
 .result.flash .price{animation:ctflash .6s ease-out}
 @keyframes ctflash{0%{color:var(--primary)}100%{color:var(--ink)}}
 
@@ -230,6 +233,8 @@ a:hover{text-decoration:underline}
 .meal-insight{font-size:15px;color:var(--muted);margin:16px 0;letter-spacing:-.3px;line-height:1.5}
 .meal-insight b{color:var(--ink)}
 .meal-section-label{font-size:13px;font-weight:600;color:var(--muted-48);letter-spacing:-.2px;margin:18px 0 10px}
+.meal-presethint{font-size:13px;color:var(--muted);background:var(--parchment);border-radius:11px;padding:11px 14px;margin:0 0 12px;line-height:1.5;letter-spacing:-.2px}
+.meal-presethint b{color:var(--ink);font-weight:600}
 .dish-list{display:flex;flex-direction:column;gap:8px}
 .dish-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:8px 0;border-bottom:1px solid var(--divider)}
 .dish-row:last-child{border:none}

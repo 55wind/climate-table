@@ -12,12 +12,18 @@ const state = {
 };
 
 const SLIDERS = [
-  { key: "heat_days", label: "폭염일수", unit: "일", min: 0, max: 31, hint: "33℃ 이상 일수" },
-  { key: "heavy_rain_days", label: "호우일수", unit: "일", min: 0, max: 12, hint: "집중호우 일수" },
-  { key: "drought_idx", label: "가뭄지수", unit: "", min: 0, max: 100, hint: "0=충분 100=극심" },
-  { key: "cold_days", label: "한파일수", unit: "일", min: 0, max: 28, hint: "겨울 한파" },
-  { key: "frost", label: "개화기 냉해", unit: "", min: 0, max: 100, hint: "봄 저온·서리(사과)" },
-  { key: "month", label: "기준 월", unit: "월", min: 1, max: 12, hint: "계절 효과" },
+  { key: "heat_days", label: "폭염일수", unit: "일", min: 0, max: 31, hint: "기상청 기준 33℃ 이상",
+    tip: "여름 더위가 심할수록 배추·무가 타들어가 채솟값이 가장 크게 올라요." },
+  { key: "heavy_rain_days", label: "호우일수", unit: "일", min: 0, max: 12, hint: "집중호우(큰비) 내린 날",
+    tip: "비가 너무 많이 오면 햇빛이 부족하고 밭이 잠겨 작황이 나빠져요." },
+  { key: "drought_idx", label: "가뭄지수", unit: "", min: 0, max: 100, hint: "표준강수지수(SPI) · 0~100",
+    tip: "땅이 마르면 작물이 물을 못 먹어 수확이 줄고 값이 올라요. (0=충분, 100=극심)" },
+  { key: "cold_days", label: "한파일수", unit: "일", min: 0, max: 28, hint: "기상청 기준 −12℃ 이하",
+    tip: "겨울 채소는 이미 저장·김장한 물량이 많아 추위 영향은 의외로 작아요." },
+  { key: "frost", label: "개화기 냉해", unit: "", min: 0, max: 100, hint: "봄 개화기 서리·저온",
+    tip: "사과꽃 필 때 서리가 내리면 열매가 안 열려 이듬해 ‘금사과’가 돼요." },
+  { key: "month", label: "기준 월", unit: "월", min: 1, max: 12, hint: "계절(제철) 효과",
+    tip: "같은 날씨라도 계절에 따라 제철·저장 상황이 달라 값이 변해요." },
 ];
 
 // 가계 체감 단위(소매 환산용 대략 중량)
@@ -141,8 +147,7 @@ function buildMealPresets() {
     const b = document.createElement("button"); b.type = "button"; b.textContent = p.name;
     b.onclick = () => {
       applyScenario(p.s);           // 기존 시뮬과 동일하게 시나리오 공유·갱신
-      Array.from(box.children).forEach((x, j) => x.classList.toggle("active", j === i));
-      refreshMeal();
+      refreshMeal();                // syncMealPresetActive로 일치 프리셋 활성화
     };
     box.appendChild(b);
   });
@@ -199,16 +204,29 @@ async function doSimulateMeal() {
   renderMeal(res);
 }
 
-function updateWeatherBadge() {
-  const b = $("mealWeatherBadge"); if (!b) return;
-  const s = state.scenario;
-  const on = [];
+// 현재 시나리오에서 작동 중인 기상 이벤트 목록(빈 배열 = 평년)
+function weatherOnFlags() {
+  const s = state.scenario, on = [];
   if (s.heat_days >= 10) on.push("폭염");
   if (s.drought_idx >= 50) on.push("가뭄");
   if (s.heavy_rain_days >= 6) on.push("호우");
   if (s.cold_days >= 10) on.push("한파");
   if (s.frost >= 40) on.push("냉해");
-  b.textContent = "현재 날씨 · " + (on.length ? on.join("·") : "평년 수준") + ` (${s.month}월)`;
+  return on;
+}
+function updateWeatherBadge() {
+  const b = $("mealWeatherBadge"); if (!b) return;
+  const on = weatherOnFlags();
+  b.textContent = "현재 날씨 · " + (on.length ? on.join("·") : "평년 수준") + ` (${state.scenario.month}월)`;
+}
+// 현재 시나리오와 값이 모두 같은 프리셋을 밥상 탭에서 활성 표시(기본=평년 포함)
+function scenarioMatchesPreset(p) {
+  return SLIDERS.every(sl => (+state.scenario[sl.key] || 0) === (+p.s[sl.key] || 0));
+}
+function syncMealPresetActive() {
+  const box = $("mealPresets"); if (!box) return;
+  Array.from(box.children).forEach((b, i) =>
+    b.classList.toggle("active", !!PRESETS[i] && scenarioMatchesPreset(PRESETS[i])));
 }
 
 // 받침 유무로 주격조사 이/가 선택
@@ -225,6 +243,10 @@ function renderMeal(res) {
     box.innerHTML = `<p class="meal-empty">식탁이 비었습니다. 위 음식을 눌러 올려 보세요.</p>`;
     return;
   }
+  // 평년(날씨 영향 없음)일 때 0%가 정상임을 안내 + 프리셋 사용 유도
+  const presetHint = weatherOnFlags().length === 0
+    ? `<p class="meal-presethint">💡 지금은 <b>평년 날씨</b>라 변동이 0%예요. 위 날씨 프리셋을 누르면 기후별 물가 변동을 볼 수 있어요.</p>`
+    : "";
   const cost = res.total.cost, eat = res.total.eatout;
   const sign = p => (p > 0 ? "+" : "") + p + "%";
   const top = res.ingredientTotals[0];
@@ -260,11 +282,13 @@ function renderMeal(res) {
     <div class="meal-section-label">음식별 (원가 · 외식)</div>
     <div class="dish-list">${dishRows}</div>
     <div class="meal-section-label">원자재(기후 작물) 가격 영향 · 구매단위 기준</div>
+    ${presetHint}
     <div class="ing-bars">${ingBars || '<p class="meal-empty">기후 작물 재료가 없습니다.</p>'}</div>`;
 }
 
 function refreshMeal() {
   updateWeatherBadge();
+  syncMealPresetActive();
   if (state.meal.length) simulateMeal();
 }
 
@@ -284,7 +308,8 @@ function buildSliders() {
   for (const sl of SLIDERS) {
     const wrap = document.createElement("div"); wrap.className = "slider";
     wrap.innerHTML = `<div class="lab"><span>${sl.label} <small style="color:#86868b">${sl.hint}</small></span><b id="v_${sl.key}"></b></div>
-      <input type="range" id="s_${sl.key}" min="${sl.min}" max="${sl.max}" step="1" aria-label="${sl.label} (${sl.hint})">`;
+      <input type="range" id="s_${sl.key}" min="${sl.min}" max="${sl.max}" step="1" aria-label="${sl.label} (${sl.hint})">
+      ${sl.tip ? `<div class="tip">${sl.tip}</div>` : ""}`;
     c.appendChild(wrap);
     const input = wrap.querySelector("input");
     input.value = state.scenario[sl.key];
@@ -367,8 +392,18 @@ function renderResult(res) {
   $("headline").textContent = res.explain.headline;
   $("drivers").textContent = res.explain.drivers;
   $("note").textContent = res.explain.note;
-  const rel = res.reliability || { label: "-", reason: "" };
-  $("r2box").innerHTML = `기상 설명력 <b>R² = ${res.r2}</b> · 신뢰도 <b>${rel.label}</b><br><span style="color:#86868b">${rel.reason}</span>`;
+  const rel = res.reliability || { label: "-", reason: "", level: "" };
+  const r2pct = Math.round((res.r2 || 0) * 100);
+  const R2_LESSON = {
+    high: "날씨가 이 작물 값을 좌우하는 핵심 요인이라는 뜻이에요.",
+    mid: "날씨도 중요하지만 수급·유통 같은 다른 요인도 함께 봐야 한다는 신호예요.",
+    low: "숫자가 낮다고 모델이 틀린 게 아니라, 날씨보다 정부 비축·수급관리가 더 크게 작용한다는 ‘발견’이에요.",
+  };
+  const lesson = R2_LESSON[rel.level] || "";
+  $("r2box").innerHTML = `기상 설명력 <b>R² = ${res.r2}</b> · 신뢰도 <b>${rel.label}</b>`
+    + `<br><span style="color:#86868b">${rel.reason}</span>`
+    + `<div class="r2-lesson"><b>💡 데이터로 생각하기</b> — R²는 ‘날씨로 가격을 얼마나 설명할 수 있나’를 0~1로 나타낸 점수예요. `
+    + `이 작물은 가격 변화의 약 <b>${r2pct}%</b>를 날씨로 설명할 수 있어요. ${lesson}</div>`;
   const ul = $("adapt"); ul.innerHTML = "";
   for (const a of res.adapt) { const li = document.createElement("li"); li.textContent = a; ul.appendChild(li); }
   // 상태 가시성: 결과 갱신을 잠깐 강조
