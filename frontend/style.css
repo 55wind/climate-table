@@ -79,6 +79,9 @@ a:hover{text-decoration:underline}
 .slider input[type=range]{width:100%;accent-color:var(--primary);height:4px}
 .slider .tip{font-size:12px;letter-spacing:-.12px;color:var(--muted-48);margin-top:6px;line-height:1.45}
 .src{font-size:12px;letter-spacing:-.12px;color:var(--muted-48);margin-top:22px;line-height:1.4}
+.datasrc{display:flex;flex-direction:column;gap:3px}
+.datasrc b{color:var(--muted);font-weight:600}
+.datasrc>b:first-child{margin-bottom:2px}
 
 /* ---------- 결과 ---------- */
 .result-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}

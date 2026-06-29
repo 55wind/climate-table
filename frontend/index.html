@@ -62,7 +62,12 @@
     <h2 class="mt">날씨 직접 조절 <button id="resetBtn" class="mini" type="button">평년으로 초기화</button></h2>
     <div id="sliders" class="sliders"></div>
 
-    <p class="src">데이터: 기상청·KAMIS·통계청 보도값 기반 교육용 근사 모델 (2018–2025 월별)</p>
+    <div class="src datasrc" id="dataSource">
+      <b>데이터 출처</b>
+      <span>· 기상 지표(폭염일수·한파·가뭄 등): 기상청 기상자료개방포털 ASOS 정의 기반</span>
+      <span>· 농산물 가격: KAMIS·통계청·기상청 보도값으로 보정한 <b>교육용 근사값</b> (2018–2025 월별 96개월)</span>
+      <span>· 본선: 기상청·KAMIS OpenAPI <b>실시간 데이터로 교체 예정</b></span>
+    </div>
   </section>
 
   <!-- 우측: 결과 -->
