@@ -272,9 +272,9 @@ function renderMeal(res) {
   const dishRows = res.dishes.map(d =>
     `<div class="dish-row"><span class="dr-name">${d.name}<span class="dr-pct">${d.cost.pct > 0 ? "+" + d.cost.pct + "%" : ""}</span></span>
        <span class="dr-price">원가 ${d.cost.predicted.toLocaleString()} · 외식 ${d.eatout.predicted.toLocaleString()}원</span></div>`).join("");
-  const maxDelta = Math.max(1, ...res.ingredientTotals.map(i => i.predicted - i.baseline));
   const ingBars = res.ingredientTotals.map(i => {
-    const w = Math.max(3, (i.predicted - i.baseline) / maxDelta * 100);
+    // 막대 너비 = 평년比 상승률(%) 그대로(최대 100). 무변동·하락(≤0%)은 채우지 않는다.
+    const w = Math.min(100, Math.max(0, i.pct));
     const up = i.unitPrice;
     return `<div class="ing-bar"><div class="ib-top">
         <span>${i.crop} <small style="color:#86868b">1${i.unit} ${up.predicted.toLocaleString()}원 (평년 ${up.baseline.toLocaleString()})</small></span>
@@ -558,12 +558,15 @@ function drawMap(pct) {
   paintLand(mainPx, true);
   if (showJeju) paintLand(jejuPx, true);
 
-  // 4) 산지 점 계산
+  // 4) 산지 점 계산. 제주(섬)는 마커가 섬을 가리지 않게 동쪽 바다로 비키고 지시선으로 연결
   const pts = regions.map(r => {
     const [x, y] = P(r.lon, r.lat);
     const impact = Math.max(0, pct) * r.w;
     const rad = 11 + r.w * 5 + Math.min(13, Math.max(0, pct) / 80 * 13);
-    return { r, x0: x, y0: y, x, y, rad, impact };
+    const isle = r.lat < 34.0;
+    const tx = isle ? x + rad + 18 : x;   // 마커가 머물 목표 위치(섬 옆)
+    const ty = isle ? y + 2 : y;
+    return { r, x0: x, y0: y, tx, ty, x: tx, y: ty, rad, impact };
   });
   // 겹침 분리(반발 + 원위치 스프링)
   for (let it = 0; it < 90; it++) {
@@ -573,7 +576,7 @@ function drawMap(pct) {
       if (d < min) { const push = (min - d) / 2, ux = dx / d, uy = dy / d; a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push; }
     }
     for (const p of pts) {
-      p.x += (p.x0 - p.x) * 0.03; p.y += (p.y0 - p.y) * 0.03;
+      p.x += (p.tx - p.x) * 0.03; p.y += (p.ty - p.y) * 0.03;
       p.x = Math.max(p.rad + 22, Math.min(w - p.rad - 22, p.x));
       p.y = Math.max(p.rad + 20, Math.min(h - p.rad - 26, p.y));
     }
