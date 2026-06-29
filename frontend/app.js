@@ -59,7 +59,6 @@ const SK_JEJU_RING = [
   [126.815,33.576],[126.315,33.481],[126.193,33.402],[126.149,33.29],[126.247,33.156],[126.278,33.151],
   [126.337,33.218],[126.609,33.221],[126.807,33.282],[126.869,33.32],[126.985,33.5],[126.815,33.576],
 ];
-const SK_DOMAIN = { lonMin: 125.5, lonMax: 130.1, latMin: 32.9, latMax: 38.9 };
 // 작물별 주요 산지: {name, lon, lat, w(상대 민감도·비중)}
 const CROP_REGIONS = {
   "배추": [{ n: "강원 고랭지", lon: 128.4, lat: 37.6, w: 1.3 }, { n: "전남 해남", lon: 126.6, lat: 34.6, w: 1.0 }, { n: "충북", lon: 127.6, lat: 36.8, w: 0.9 }, { n: "경북", lon: 128.7, lat: 36.4, w: 0.85 }],
@@ -520,7 +519,13 @@ function drawMap(pct) {
   cv.width = w * dpr; cv.height = h * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const D = SK_DOMAIN, pad = 18, cosM = Math.cos(36 * Math.PI / 180);
+  // 현재 작물 산지에 제주가 있을 때만 제주를 표시 → 없으면 내륙만 크게 확대
+  const regions = CROP_REGIONS[state.item] || [];
+  const showJeju = regions.some(r => r.lat < 34.0);
+  const D = showJeju
+    ? { lonMin: 125.6, lonMax: 129.95, latMin: 32.95, latMax: 38.74 }
+    : { lonMin: 125.95, lonMax: 129.8, latMin: 34.08, latMax: 38.72 };
+  const pad = 16, cosM = Math.cos(36 * Math.PI / 180);
   const lonSpan = (D.lonMax - D.lonMin) * cosM, latSpan = D.latMax - D.latMin;
   const sc = Math.min((w - pad * 2) / lonSpan, (h - pad * 2) / latSpan);
   const cxp = w / 2, cyp = h / 2, midLon = (D.lonMin + D.lonMax) / 2, midLat = (D.latMin + D.latMax) / 2;
@@ -551,10 +556,9 @@ function drawMap(pct) {
     ctx.strokeStyle = "#b9c2b2"; ctx.lineWidth = 1.4; ctx.lineJoin = "round"; ctx.stroke();
   };
   paintLand(mainPx, true);
-  paintLand(jejuPx, true);
+  if (showJeju) paintLand(jejuPx, true);
 
   // 4) 산지 점 계산
-  const regions = CROP_REGIONS[state.item] || [];
   const pts = regions.map(r => {
     const [x, y] = P(r.lon, r.lat);
     const impact = Math.max(0, pct) * r.w;
