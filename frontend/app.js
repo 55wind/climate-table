@@ -437,15 +437,17 @@ function renderCorr(corrs) {
       <div class="corr-bar"><div class="corr-mid"></div>${side}</div>`;
     c.appendChild(row);
   }
-  $("corrNote").textContent = "양(+)의 상관: 값이 클수록 가격↑ (빨강) · 음(−): 가격↓ (파랑)";
+  $("corrNote").textContent = "막대가 길수록 이 작물 가격을 크게 끌어올리는 기상 요인입니다(실측 가격 학습 · 인과 보존 모델).";
 }
 
 /* ---------- Canvas 차트 ---------- */
 function drawChart() {
   const cv = $("chart"); if (!state.series.length) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = cv.clientWidth, h = 240;
-  cv.width = w * dpr; cv.height = h * dpr;
+  const w = cv.clientWidth;
+  if (!w) { requestAnimationFrame(drawChart); return; }
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const h = 240;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
   const pad = { l: 46, r: 12, t: 12, b: 22 };
@@ -514,9 +516,12 @@ function tracePath(ctx, ring) {
 }
 function drawMap(pct) {
   const cv = $("mapCanvas"); if (!cv) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = cv.clientWidth || cv.width, h = 380;
-  cv.width = w * dpr; cv.height = h * dpr;
+  const w = cv.clientWidth;
+  // 레이아웃 전 호출이면 300px 폴백으로 흐리게 그리지 말고 다음 프레임에 재시도
+  if (!w) { requestAnimationFrame(() => drawMap(pct)); return; }
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);  // 고배율(윈도우 200%+) 디스플레이 선명도
+  const h = 380;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
   // 현재 작물 산지에 제주가 있을 때만 제주를 표시 → 없으면 내륙만 크게 확대

@@ -16,6 +16,28 @@ FEATURE_LABELS = {
     "drought_idx": "가뭄지수", "frost": "개화기냉해", "sun_dev": "일조부족",
 }
 
+# 하이브리드: 표시(차트·평년·밥상)는 실측 KAMIS 그대로, 시뮬레이터 인과는 도메인 부호 보존.
+# 작물별 기상 민감도(원/kg, 양수=악천후→가격 상승). gen_data 모델과 동일한 물리 우선값.
+_SENS = {
+    "배추":   {"heat": 82, "drought": 26.0, "heavy_rain": 70, "cold": 34, "frost": 0,   "sun": -2.6},
+    "무":     {"heat": 62, "drought": 22.0, "heavy_rain": 48, "cold": 22, "frost": 0,   "sun": -1.8},
+    "사과":   {"heat": 18, "drought": 12.0, "heavy_rain": 34, "cold": 2,  "frost": 470, "sun": -3.2},
+    "쌀":     {"heat": 3,  "drought": 4.0,  "heavy_rain": 9,  "cold": 1,  "frost": 0,   "sun": -1.0},
+    "시금치": {"heat": 28, "drought": 12.0, "heavy_rain": 22, "cold": 24, "frost": 6,   "sun": -1.5},
+    "양파":   {"heat": 10, "drought": 14.0, "heavy_rain": 12, "cold": 6,  "frost": 10,  "sun": -0.8},
+}
+
+
+def _prior_coef(crop):
+    """설계행렬 순서 [1, FEATURES.., sin, cos] 의 계수 사전(prior). 악천후 피처는 모두 양(+)."""
+    s = _SENS.get(crop, {})
+    feat = {
+        "heat_days": s.get("heat", 0), "cold_days": s.get("cold", 0),
+        "heavy_rain_days": s.get("heavy_rain", 0), "drought_idx": s.get("drought", 0) / 10.0,
+        "frost": s.get("frost", 0) / 10.0, "sun_dev": -s.get("sun", 0),
+    }
+    return [0.0] + [float(feat[k]) for k in FEATURES] + [0.0, 0.0]
+
 
 def _feat_row(r):
     """원시 행 → 피처 dict"""
@@ -39,8 +61,9 @@ def _design(r):
     return row
 
 
-def _solve(A, b, ridge=1.0):
-    """정규방정식 (AᵀA + λI) x = Aᵀb 를 가우스 소거로 푼다."""
+def _solve(A, b, ridge=1.0, prior=None):
+    """정규방정식 (AᵀA + λI) x = Aᵀb + λ·prior 를 가우스 소거로 푼다.
+       prior가 있으면 ||Ax-b||² + λ·||x-prior||² 를 최소화(도메인 우선값으로 수축)."""
     n = len(A[0])
     # AtA, Atb
     AtA = [[0.0] * n for _ in range(n)]
@@ -54,8 +77,10 @@ def _solve(A, b, ridge=1.0):
             row = AtA[p]
             for q in range(n):
                 row[q] += aip * ai[q]
-    for p in range(1, n):  # 절편 제외 릿지
+    for p in range(1, n):  # 절편 제외 릿지(+prior 수축)
         AtA[p][p] += ridge
+        if prior is not None:
+            Atb[p] += ridge * prior[p]
     # 가우스 소거
     M = [AtA[i][:] + [Atb[i]] for i in range(n)]
     for col in range(n):
@@ -87,18 +112,28 @@ class ClimateModel:
 
     def _fit_all(self):
         A = [_design(r) for r in self.rows]
+        n = len(A)
         for crop in self.items:
             y = [r["prices"][crop] for r in self.rows]
-            coef = _solve(A, y, ridge=18.0)
-            self.coefs[crop] = coef
-            # R²
-            ybar = sum(y) / len(y)
+            ybar = sum(y) / n
             ss_tot = sum((v - ybar) ** 2 for v in y) or 1.0
-            ss_res = 0.0
-            for i in range(len(A)):
-                pred = sum(c * x for c, x in zip(coef, A[i]))
-                ss_res += (y[i] - pred) ** 2
+
+            # (1) 신뢰도용: 제약 없는 실측 회귀의 R² = '기상이 실제 가격을 설명하는 비율'(정직)
+            emp = _solve(A, y, ridge=18.0)
+            ss_res = sum((y[i] - sum(c * x for c, x in zip(emp, A[i]))) ** 2 for i in range(n))
             self.r2[crop] = max(0.0, 1 - ss_res / ss_tot)
+
+            # (2) 시뮬레이터용 인과 계수: 실측으로 학습 + 도메인 우선값 수축 + 악천후 부호 바닥 고정
+            prior = _prior_coef(crop)
+            coef = _solve(A, y, ridge=42.0, prior=prior)
+            for i in range(len(FEATURES)):
+                floor = max(0.0, 0.5 * prior[i + 1])
+                if coef[i + 1] < floor:
+                    coef[i + 1] = floor
+            # (3) 레벨 보정: 평균 기상에서 예측 평균 = 실측 평균이 되도록 절편 재중심(평년比% 정합)
+            mean_pred = sum(sum(c * x for c, x in zip(coef, A[i])) for i in range(n)) / n
+            coef[0] += ybar - mean_pred
+            self.coefs[crop] = coef
 
     def predict(self, crop, scenario, month=8):
         """scenario: dict with FEATURES 키(sun_dev 또는 sun_hr 허용)"""
@@ -126,19 +161,20 @@ class ClimateModel:
         return out
 
     def correlations(self, crop):
-        """피처별 가격과의 피어슨 상관"""
-        ys = [r["prices"][crop] for r in self.rows]
-        n = len(ys)
-        ybar = sum(ys) / n
+        """기상 민감도(모델): 각 피처가 이 작물 가격에 주는 표준화 영향(부호=인과, 정규화 -1~1).
+           시뮬레이터·기여요인과 동일한 인과 모델에서 산출 → 화면 전체 정합."""
+        coef = self.coefs[crop]
+        n = len(self.rows)
         out = []
-        for k in FEATURES:
+        for i, k in enumerate(FEATURES):
             xs = [_feat_row(r)[k] for r in self.rows]
-            xbar = sum(xs) / n
-            num = sum((xs[i] - xbar) * (ys[i] - ybar) for i in range(n))
-            dx = math.sqrt(sum((x - xbar) ** 2 for x in xs))
-            dy = math.sqrt(sum((y - ybar) ** 2 for y in ys))
-            r = num / (dx * dy) if dx > 0 and dy > 0 else 0.0
-            out.append({"feature": k, "label": FEATURE_LABELS[k], "r": round(r, 3)})
+            xb = sum(xs) / n
+            sd = math.sqrt(sum((x - xb) ** 2 for x in xs) / n)
+            out.append({"feature": k, "label": FEATURE_LABELS[k], "eff": coef[i + 1] * sd})
+        mx = max((abs(o["eff"]) for o in out), default=1.0) or 1.0
+        for o in out:
+            o["r"] = round(o["eff"] / mx, 3)
+            del o["eff"]
         out.sort(key=lambda d: abs(d["r"]), reverse=True)
         return out
 
